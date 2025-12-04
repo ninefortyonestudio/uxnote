@@ -1615,11 +1615,7 @@
 
   function exportAnnotations() {
     // Exporte les annotations locales dans un fichier JSON nommé avec le site et l'heure
-    const payload = {
-      pageUrl: window.location.href,
-      createdAt: Date.now(),
-      annotations: state.annotations
-    };
+    const payload = buildAnnotationsPayload();
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1629,13 +1625,44 @@
     URL.revokeObjectURL(url);
   }
 
-  function emailAnnotations() {
-    const payload = {
+  function buildAnnotationsPayload() {
+    return {
       pageUrl: window.location.href,
       createdAt: Date.now(),
       annotations: state.annotations
     };
-    const body = encodeURIComponent(JSON.stringify(payload, null, 2));
+  }
+
+  async function emailAnnotations() {
+    const payload = buildAnnotationsPayload();
+    const data = JSON.stringify(payload, null, 2);
+    const filename = buildFilename();
+    const blob = new Blob([data], { type: 'application/json' });
+    const hasFileCtor = typeof File !== 'undefined';
+    const file = hasFileCtor ? new File([blob], filename, { type: 'application/json' }) : null;
+    const canShareFile = file && navigator.canShare && navigator.canShare({ files: [file] });
+
+    if (canShareFile) {
+      try {
+        await navigator.share({
+          title: 'Annotations Uxnote',
+          text: 'Fichier JSON des annotations en pièce jointe.',
+          files: [file]
+        });
+        return;
+      } catch (err) {
+        console.warn('Partage email annulé ou indisponible', err);
+      }
+    }
+
+    // Fallback : on télécharge le JSON et on ouvre un brouillon email sans injecter le code brut
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+    const body = encodeURIComponent(`Fichier JSON téléchargé : ${filename}. Ajoute-le en pièce jointe si besoin.`);
     window.location.href = `mailto:?subject=Annotations&body=${body}`;
   }
 
