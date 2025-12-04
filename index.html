@@ -94,7 +94,6 @@
       }
       const s = document.createElement('script');
       s.src = '../uxnote-tool/uxnote.js';
-      s.dataset.icons = '../ressources';
       s.dataset.uxnoteLoaded = 'true';
       s.onload = () => { statusEl.textContent = 'Démo active (toolbar en bas)'; };
       s.onerror = () => { statusEl.textContent = 'Erreur de chargement du script'; };
