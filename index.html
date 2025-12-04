@@ -1,107 +1,170 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Uxnote – Annoter et suivre vos pages</title>
+  <title>Uxnote – Annotate and track your pages</title>
   <link rel="stylesheet" href="css/uxnote-landing.css">
 </head>
 <body>
   <header>
     <nav class="nav">
       <div class="brand">
-        <div class="brand-pill">UX</div>
-        <div>Uxnote</div>
+        <img class="brand-logo" src="./uxnote-tool/ressources/uxnote-logo.svg" alt="Uxnote logo">
       </div>
       <div class="nav-links">
-        <a href="#why">Pour qui</a>
-        <a href="#features">Fonctionnalités</a>
-        <a href="#install">Installation</a>
-        <a href="#clients">Clients</a>
-        <button class="btn" id="demo-btn">Voir la démo</button>
+        <button class="btn" id="demo-btn">Live preview</button>
       </div>
     </nav>
   </header>
 
   <section class="hero">
-    <div>
-      <h1>La barre d’annotation pour vos maquettes et sites web.</h1>
-      <p>Transformez n’importe quelle page web en espace de review : surlignages, commentaires, feedback visuel… sans plugin ni backend. Compatible GitHub Pages, préprod, maquettes et sites clients.</p>
-      <div class="badges">
-        <a class="btn" href="#install">Installer UxNote</a>
-        <button class="btn secondary" id="demo-btn-2">Activer la démo</button>
+    <div class="hero-grid">
+      <div class="hero-copy">
+        <h1>The annotation bar for your mockups and websites.</h1>
+        <p>Turn any web page into a review surface: highlights, comments, visual feedback—no plugin or backend needed. Works on GitHub Pages, WordPress, staging, prototypes, client sites—even local sites.</p>
+        <div class="badges">
+          <a class="btn" href="#install">Install UxNote</a>
+        </div>
       </div>
-      <div class="demo-surface">
-        <div class="status" id="demo-status">Démo inactive (toolbar non chargée)</div>
-        <p style="color:var(--muted); margin:8px 0 0;">Clique sur « Lancer la démo » pour injecter Uxnote sur cette page et tester la toolbar.</p>
+      <div class="hero-visual">
+        <div class="demo-frame glass">
+            <div class="demo-window">
+              <div class="demo-header">
+                <div class="demo-dots">
+                  <span class="dot red"></span>
+                  <span class="dot amber"></span>
+                  <span class="dot green"></span>
+              </div>
+              <div class="demo-status-pill" id="demo-status">Demo off (toolbar not loaded)</div>
+            </div>
+              <div class="demo-content">
+                <div class="demo-left">
+                  <div class="demo-line long"></div>
+                  <div class="demo-line long"></div>
+                  <div class="demo-highlight"></div>
+                  <div class="demo-line long"></div>
+                  <div class="demo-line long"></div>
+                  <div class="demo-line mid"></div>
+                  <div class="demo-line mid"></div>
+                </div>
+                <div class="demo-right">
+                  <div class="demo-cards">
+                    <div class="demo-card static">
+                      <span class="demo-pill">#12</span>
+                      <span class="demo-trash" aria-hidden="true">✕</span>
+                    </div>
+                    <div class="demo-card static">
+                      <span class="demo-pill">#13</span>
+                      <span class="demo-trash" aria-hidden="true">✕</span>
+                    </div>
+                    <div class="demo-card animate">
+                      <span class="demo-pill">#14</span>
+                      <span class="demo-trash" aria-hidden="true">✕</span>
+                    </div>
+                  </div>
+                </div>
+            </div>
+            <div class="demo-toolbar-preview">
+              <span class="tool pen"><img src="./uxnote-tool/ressources/uxnote-icon-pen.svg" alt="Highlight tool"></span>
+              <span class="tool"><img src="./uxnote-tool/ressources/uxnote-icon-target.svg" alt="Element tool"></span>
+              <span class="tool"><img src="./uxnote-tool/ressources/uxnote-icon-rect.svg" alt="Region tool"></span>
+            </div>
+          </div>
+          <button class="demo-footer-btn" id="demo-btn-3">Live preview</button>
+        </div>
       </div>
     </div>
   </section>
 
   <section class="section" id="why">
-    <h2>Pour qui et pourquoi ?</h2>
+    <h2>Who and why?</h2>
     <div class="cards">
-      <div class="card"><h3>Agences & freelances</h3><p>Finis les mails vagues et les captures bricolées : tes clients commentent directement sur la page, tu exportes tout en un seul fichier lisible.</p></div>
-      <div class="card"><h3>Équipes produit & UX</h3><p>Faites vos revues là où les interfaces vivent : dans le navigateur. Uxnote ajoute une couche de notes et surlignages sans toucher au code existant.</p></div>
+      <div class="card"><h3>Agencies & freelancers</h3><p>No more vague emails or improvised screenshots: clients comment directly on the page, you export everything in one clean file.</p></div>
+      <div class="card"><h3>Product & UX teams</h3><p>Review where the interfaces live: in the browser. Uxnote adds notes and highlights without touching existing code.</p></div>
     </div>
   </section>
 
   <section class="section" id="features">
-    <h2>Fonctionnalités essentielles</h2>
+    <h2>Core features</h2>
     <div class="cards">
-      <div class="card"><h3>Modes de capture</h3><p>Texte, élément, zone libre avec priorités, snippets repliables et badges numérotés.</p></div>
-      <div class="card"><h3>Site-wide</h3><p>Liste globale pour tout le domaine, jump-to : un clic ouvre la page et centre l'annotation.</p></div>
-      <div class="card"><h3>Import / Export / Mail</h3><p>JSON unique (titre + date), import avec re-render complet, envoi par email pour partager les retours côté dev.</p></div>
+      <div class="card"><h3>Capture modes</h3><p>Text, element, free area with priorities, collapsible snippets, and numbered badges.</p></div>
+      <div class="card"><h3>Site-wide</h3><p>Global list for the whole domain, jump-to opens the page and centers the annotation.</p></div>
+      <div class="card"><h3>Import / Export / Mail</h3><p>Single JSON (title + date), import with full re-render, email sending for sharing with devs.</p></div>
     </div>
   </section>
 
   <section class="section" id="install">
-    <h2>Installation (copier-coller)</h2>
-    <p class="lead">Ajoute Uxnote juste avant <code>&lt;/body&gt;</code> sur chaque page à annoter (ton script est sur GitHub) :</p>
+    <h2>Install (copy / paste)</h2>
+    <p class="lead">Drop Uxnote right before <code>&lt;/body&gt;</code> on each page you want to annotate (your script is on GitHub):</p>
     <div class="code-block">
-&lt;!-- Uxnote --&gt;
-&lt;script src="https://cdn.example.com/uxnote.js"
-        data-icons="/ressources"
-        data-position="bottom"&gt;&lt;/script&gt;
+&lt;script src="https://uxnote.ninefortyone.studio/uxnote-tool/uxnote.js"&gt;&lt;/script&gt;
     </div>
-    <p class="lead">Charge Uxnote sur toutes les pages où tes clients commentent. La liste regroupe tout le site et le click sur une annotation ouvre la page cible puis focus l’élément.</p>
-    <div class="steps">
-      <div class="step"><div class="num">1</div><h3>Injecter</h3><p>Colle le snippet sur chaque page (ou via un tag manager global).</p></div>
-      <div class="step"><div class="num">2</div><h3>Partager</h3><p>Envoie l’URL au client (tu peux ajouter <code>?uxnote=1</code> si besoin d’activer un mode dédié).</p></div>
-      <div class="step"><div class="num">3</div><h3>Annoter</h3><p>Le client surligne, commente texte/élément/zone; tout apparaît dans le panneau Uxnote.</p></div>
-      <div class="step"><div class="num">4</div><h3>Exporter / Mail</h3><p>Côté dev, clique “Exporter” (JSON) ou “Mail” pour récupérer et traiter les retours.</p></div>
+    <div class="steps install-steps">
+      <div class="step"><div class="num">1</div><h3>Inject</h3><p>Paste the snippet on each page (or via a global tag manager).</p></div>
+      <div class="step"><div class="num">2</div><h3>Share</h3><p>Send the URL to your client (optionally add <code>?uxnote=1</code> to flag review mode).</p></div>
+      <div class="step"><div class="num">3</div><h3>Annotate</h3><p>Clients highlight, comment on text/element/area; everything shows in the Uxnote panel.</p></div>
+      <div class="step"><div class="num">4</div><h3>Export / Mail</h3><p>Dev side: click “Export” (JSON) or “Mail” to collect and process feedback.</p></div>
     </div>
   </section>
 
-  <section class="section" id="clients">
-    <h2>Comment l’utiliser avec vos clients</h2>
-    <div class="steps">
-      <div class="step"><div class="num">1</div><h3>Prépare</h3><p>Maquette ou préprod comme d’habitude, Uxnote déjà inclus dans le template.</p></div>
-      <div class="step"><div class="num">2</div><h3>Partage</h3><p>Envoie à ton client l’URL (optionnel : <code>?uxnote=1</code> pour marquer les revues).</p></div>
-      <div class="step"><div class="num">3</div><h3>Annoter</h3><p>Le client annote, commente, surligne sans installer quoi que ce soit.</p></div>
-      <div class="step"><div class="num">4</div><h3>Récupérer</h3><p>Tu exportes les annotations en JSON ou via email pour les intégrer dans ton workflow.</p></div>
-    </div>
-  </section>
-
-  <footer class="footer">© 2024 Uxnote – Landing produit.</footer>
+  <footer class="footer"><a href="https://ninefortyone.studio" target="_blank" rel="noreferrer noopener">© Uxnote – by NineFortyOne.Studio</a></footer>
 
   <script>
     const statusEl = document.getElementById('demo-status');
+    const demoButtons = ['demo-btn', 'demo-btn-2', 'demo-btn-3']
+      .map((id) => document.getElementById(id))
+      .filter(Boolean);
+    let previewActive = false;
+    let scriptLoaded = false;
+
+    const setStatus = (text) => {
+      if (statusEl) statusEl.textContent = text;
+    };
+    const updateButtons = () => {
+      demoButtons.forEach((btn) => (btn.textContent = previewActive ? 'Close preview' : 'Live preview'));
+    };
+    const toggleAnnotatorDisplay = (show) => {
+      document.querySelectorAll('.wn-annotator').forEach((el) => {
+        el.style.display = show ? '' : 'none';
+      });
+    };
+
     const loadDemo = () => {
-      if (window.Uxnote || document.querySelector('script[data-uxnote-loaded]')) {
-        statusEl.textContent = 'Déjà chargé';
+      if (previewActive) {
+        toggleAnnotatorDisplay(false);
+        previewActive = false;
+        setStatus('Demo off (toolbar not loaded)');
+        updateButtons();
+        return;
+      }
+      // If script already loaded, just show elements
+      if (scriptLoaded || window.Uxnote || document.querySelector('script[data-uxnote-loaded]')) {
+        toggleAnnotatorDisplay(true);
+        previewActive = true;
+        setStatus('Demo active');
+        updateButtons();
         return;
       }
       const s = document.createElement('script');
-      s.src = '../uxnote-tool/uxnote.js';
+      s.src = './uxnote-tool/uxnote.js';
       s.dataset.uxnoteLoaded = 'true';
-      s.onload = () => { statusEl.textContent = 'Démo active (toolbar en bas)'; };
-      s.onerror = () => { statusEl.textContent = 'Erreur de chargement du script'; };
+      s.onload = () => {
+        scriptLoaded = true;
+        previewActive = true;
+        setStatus('Demo active');
+        updateButtons();
+      };
+      s.onerror = () => {
+        setStatus('Script failed to load');
+      };
       document.body.appendChild(s);
-      statusEl.textContent = 'Chargement...';
+      setStatus('Loading...');
+      updateButtons();
     };
-    document.getElementById('demo-btn').addEventListener('click', loadDemo);
-    document.getElementById('demo-btn-2').addEventListener('click', loadDemo);
+
+    updateButtons();
+    demoButtons.forEach((btn) => btn.addEventListener('click', loadDemo));
   </script>
 </body>
 </html>

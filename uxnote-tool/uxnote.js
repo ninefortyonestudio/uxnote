@@ -18,7 +18,7 @@
   const storageKey = `uxnote:site:${siteKey}`;
   const pendingFocusKey = `uxnote:pending:${siteKey}`;
 
-  // Etat central de l'outil (positions, annotations, éléments DOM, filtres...)
+  // Central state (positions, annotations, DOM elements, filters...)
   const state = {
     mode: null,
     annotations: [],
@@ -30,6 +30,7 @@
     toolbar: null,
     panel: null,
     commentModal: null,
+    dialogModal: null,
     markerLayer: null,
     dragging: false,
     dragOffset: { x: 0, y: 0 },
@@ -41,7 +42,7 @@
   };
 
   function init() {
-    // Point d'entrée principal : charge la configuration, construit l'UI et restaure les données
+    // Entry point: load config, build UI, restore data
     const savedPos = loadSavedPosition();
     if (savedPos) position = savedPos;
     captureBasePadding();
@@ -64,7 +65,7 @@
   }
 
   function injectStyles() {
-    // Injection CSS isolée pour ne pas polluer la page hôte
+    // Inject scoped CSS to avoid polluting host page
     const style = document.createElement('style');
     style.setAttribute('data-wn-style', 'annotator');
     style.textContent = `
@@ -133,10 +134,12 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
+        padding-top:5px;
+        padding-left:15px;
         padding-right: 0px;
       }
       .wn-annot-logo svg {
-        width: 110px;
+        width: 60px;
         height: 24px;
         fill: currentColor;
       }
@@ -185,7 +188,7 @@
         display: block;
       }
       .wn-annot-logo-img {
-        width: 120px;
+        width: 80px;
         height: auto;
         object-fit: contain;
         display: block;
@@ -287,6 +290,17 @@
         color: #3f3852;
         font-weight: 700;
       }
+      .wn-annot-panel-head {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .wn-annot-panel-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
       .wn-annot-filters {
         display: flex;
         gap: 10px;
@@ -325,6 +339,31 @@
         border-radius: 12px;
         text-align: center;
       }
+      .wn-annot-delete-all {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(209, 59, 59, 0.1);
+        border: 1px solid rgba(209, 59, 59, 0.25);
+        color: #b83232;
+        padding: 6px 10px;
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.12s ease;
+      }
+      .wn-annot-delete-all:hover {
+        background: rgba(209, 59, 59, 0.16);
+        border-color: rgba(209, 59, 59, 0.32);
+      }
+      .wn-annot-delete-all:active {
+        transform: translateY(1px);
+      }
+      .wn-annot-delete-all svg {
+        width: 16px;
+        height: 16px;
+      }
       .wn-annot-item {
         background: #ffffff;
         border: 1px solid rgba(109, 86, 199, 0.14);
@@ -346,11 +385,46 @@
         justify-content: space-between;
         gap: 10px;
         margin-bottom: 8px;
+        align-items: flex-start;
       }
       .wn-annot-card-top-left {
         display: inline-flex;
         align-items: center;
         gap: 10px;
+        min-width: 0;
+      }
+      .wn-annot-card-top-right {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-left: auto;
+        min-width: 0;
+      }
+      .wn-annot-delete {
+        border: 1px solid rgba(209, 59, 59, 0.2);
+        background: rgba(209, 59, 59, 0.08);
+        color: #d13b3b;
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        cursor: pointer;
+        transition: all 0.12s ease;
+      }
+      .wn-annot-delete:hover {
+        background: rgba(209, 59, 59, 0.14);
+        border-color: rgba(209, 59, 59, 0.3);
+        color: #b83232;
+      }
+      .wn-annot-delete:active {
+        transform: translateY(1px);
+      }
+      .wn-annot-delete svg {
+        width: 16px;
+        height: 16px;
       }
       .wn-annot-number {
         min-width: 32px;
@@ -372,6 +446,10 @@
         color: #7f7891;
         text-transform: uppercase;
         letter-spacing: 0.3px;
+        max-width: 220px;
+        text-align: right;
+        word-break: break-word;
+        line-height: 1.4;
       }
       .wn-annot-priority {
         display: inline-flex;
@@ -531,6 +609,11 @@
         font-weight: 700;
         color: #3f3852;
       }
+      .wn-annot-dialog-message {
+        font-size: 13px;
+        line-height: 1.6;
+        color: #3f3852;
+      }
       .wn-annot-modal textarea {
         width: 100%;
         min-height: 90px;
@@ -625,7 +708,7 @@
   }
 
   function createShell() {
-    // Construction du toolbar, du panneau latéral et des calques d'annotation
+    // Build toolbar, panel, and annotation layers
     const toolbar = document.createElement('div');
     toolbar.className = `wn-annot-toolbar wn-annotator wn-pos-${position}`;
 
@@ -685,7 +768,7 @@
     document.body.appendChild(toolbar);
     state.toolbar = toolbar;
 
-    // Input caché pour sélectionner un fichier JSON lors d'un import
+    // Hidden input to pick a JSON file during import
     state.importInput = document.createElement('input');
     state.importInput.type = 'file';
     state.importInput.accept = 'application/json';
@@ -698,7 +781,12 @@
     panel.className = 'wn-annot-panel wn-annotator';
     panel.innerHTML = `
       <div class="wn-annot-panel-head wn-annotator">
-        <h3>Page annotations</h3>
+        <div class="wn-annot-panel-top wn-annotator">
+          <h3>Page annotations</h3>
+          <button class="wn-annot-delete-all wn-annotator" type="button">
+            ${iconTrash()}<span>All</span>
+          </button>
+        </div>
         <div class="wn-annot-filters wn-annotator">
           <label class="wn-annot-filter-label wn-annotator" for="wn-filter-priority">Priority</label>
           <select id="wn-filter-priority" class="wn-annotator">
@@ -718,6 +806,13 @@
     }
     document.body.appendChild(panel);
     state.panel = panel;
+    const deleteAllBtn = panel.querySelector('.wn-annot-delete-all');
+    if (deleteAllBtn) {
+      deleteAllBtn.addEventListener('click', async (evt) => {
+        evt.stopPropagation();
+        await deleteAllAnnotations();
+      });
+    }
 
     const markerLayer = document.createElement('div');
     markerLayer.className = 'wn-annot-marker-layer wn-annotator';
@@ -859,8 +954,86 @@
     return val;
   }
 
+  function ensureDialogModal() {
+    if (state.dialogModal) return state.dialogModal;
+    const backdrop = document.createElement('div');
+    backdrop.className = 'wn-annot-modal-backdrop wn-annotator';
+    const modal = document.createElement('div');
+    modal.className = 'wn-annot-modal wn-annotator';
+    const title = document.createElement('h4');
+    title.className = 'wn-annotator';
+    const message = document.createElement('div');
+    message.className = 'wn-annot-dialog-message wn-annotator';
+    const actions = document.createElement('div');
+    actions.className = 'wn-annot-actions wn-annotator';
+    const cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'wn-annot-pill cancel wn-annotator';
+    const okBtn = document.createElement('button');
+    okBtn.type = 'button';
+    okBtn.className = 'wn-annot-pill primary wn-annotator';
+
+    actions.appendChild(cancelBtn);
+    actions.appendChild(okBtn);
+    modal.appendChild(title);
+    modal.appendChild(message);
+    modal.appendChild(actions);
+    backdrop.appendChild(modal);
+    document.body.appendChild(backdrop);
+
+    state.dialogModal = { backdrop, modal, title, message, okBtn, cancelBtn };
+    return state.dialogModal;
+  }
+
+  function showDialog({ title = 'Information', message = '', okLabel = 'OK', cancelLabel = 'Cancel', dismissOnBackdrop = true }) {
+    return new Promise((resolve) => {
+      const { backdrop, title: titleEl, message: messageEl, okBtn, cancelBtn } = ensureDialogModal();
+      titleEl.textContent = title;
+      messageEl.textContent = message;
+      okBtn.textContent = okLabel;
+      const showCancel = Boolean(cancelLabel);
+      cancelBtn.style.display = showCancel ? 'inline-flex' : 'none';
+      cancelBtn.textContent = cancelLabel || '';
+
+      const close = (val) => {
+        backdrop.classList.remove('show');
+        okBtn.removeEventListener('click', onOk);
+        cancelBtn.removeEventListener('click', onCancel);
+        backdrop.removeEventListener('click', onBackdrop);
+        document.removeEventListener('keydown', onKey);
+        resolve(val);
+      };
+      const onOk = () => close(true);
+      const onCancel = () => close(false);
+      const onBackdrop = (evt) => {
+        if (evt.target === backdrop && dismissOnBackdrop) {
+          close(false);
+        }
+      };
+      const onKey = (evt) => {
+        if (evt.key === 'Escape') close(false);
+        if ((evt.metaKey || evt.ctrlKey) && evt.key === 'Enter') onOk();
+      };
+
+      okBtn.addEventListener('click', onOk);
+      cancelBtn.addEventListener('click', onCancel);
+      backdrop.addEventListener('click', onBackdrop);
+      document.addEventListener('keydown', onKey);
+      backdrop.classList.add('show');
+      okBtn.focus();
+    });
+  }
+
+  async function confirmDialog(message, title = 'Confirmation') {
+    return showDialog({ title, message, okLabel: 'Confirm', cancelLabel: 'Cancel' });
+  }
+
+  async function alertDialog(message, title = 'Information') {
+    await showDialog({ title, message, okLabel: 'OK', cancelLabel: null });
+  }
+
   function bindGlobalHandlers() {
-    // Abonnements globaux aux événements souris/clavier/resize pour maintenir la synchro UI
+    // Global subscriptions to mouse/keyboard/resize to keep UI in sync
     document.addEventListener('mouseup', handleTextSelection);
     document.addEventListener('mousemove', handleElementHover);
     document.addEventListener('click', handleElementClick, true);
@@ -873,7 +1046,7 @@
   }
 
   function initFilters() {
-    // Installe les filtres (priorité + recherche) et relance le rendu à chaque changement
+    // Install filters (priority + search) and re-render on change
     if (!state.panel) return;
     const prioritySelect = state.panel.querySelector('#wn-filter-priority');
     const searchInput = state.panel.querySelector('#wn-filter-search');
@@ -893,7 +1066,7 @@
   }
 
   function setMode(nextMode) {
-    // Active ou désactive un mode d'annotation et rafraîchit l'affichage associé
+    // Toggle annotation mode and refresh associated UI
     if (state.mode === nextMode) {
       state.mode = null;
       updateToolbarActive();
@@ -985,7 +1158,7 @@
     try {
       const stored = localStorage.getItem(storageKey);
       state.annotations = stored ? JSON.parse(stored) : [];
-      // rétro-compatibilité : ajoute pageKey si manquant
+      // Backward compatibility: add pageKey if missing
       state.annotations.forEach((ann) => {
         if (!ann.pageKey) {
           ann.pageKey = normalizePageKey(ann.pageUrl || window.location.href);
@@ -1128,7 +1301,7 @@
   }
 
   function applyPageOffset() {
-    // Décale le body pour éviter que la toolbar fixe ne masque le contenu
+    // Pad the body so the fixed toolbar does not cover content
     if (
       !state.toolbar ||
       state.customPosition ||
@@ -1157,7 +1330,7 @@
   }
 
   async function handleTextSelection() {
-    // Capture d'une sélection de texte et transformation en annotation
+    // Capture a text selection and convert to annotation
     if (state.mode !== 'text') return;
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return;
@@ -1202,7 +1375,7 @@
   }
 
   async function handleElementClick(evt) {
-    // Clique sur un élément DOM pour le marquer et ajouter un commentaire
+    // Click on a DOM element to mark it and add a comment
     if (state.mode !== 'element') return;
     const el = evt.target;
     if (!el || isWithinAnnotator(el)) return;
@@ -1234,7 +1407,7 @@
   }
 
   function handleRegionStart(evt) {
-    // Dessin d'une zone libre (click + drag) puis création d'une annotation
+    // Draw a free area (click + drag) then create an annotation
     if (state.mode !== 'region') return;
     if (isWithinAnnotator(evt.target)) return;
     evt.preventDefault();
@@ -1277,7 +1450,7 @@
         target: { rect: { x: rect.x + window.scrollX, y: rect.y + window.scrollY, w: rect.width, h: rect.height } },
         comment: comment.trim(),
         priority: priority || 'medium',
-        snippet: 'Zone libre',
+        snippet: 'Free area',
         pageUrl: window.location.href,
         pageKey: normalizePageKey(window.location.href),
         createdAt: Date.now()
@@ -1300,12 +1473,20 @@
     state.regionBox = null;
   }
 
+  function unwrapHighlightSpan(span) {
+    const parent = span && span.parentNode;
+    if (!parent) return;
+    while (span.firstChild) {
+      parent.insertBefore(span.firstChild, span);
+    }
+    parent.removeChild(span);
+  }
+
   function clearRenderedAnnotations() {
-    // Nettoie sur la page les surlignages/rectangles/markers avant de recharger
+    // Clean highlights/rectangles/markers on page before reload
     Object.values(state.highlightSpans || {}).forEach((span) => {
       if (span && span.parentNode) {
-        const text = document.createTextNode(span.textContent);
-        span.parentNode.replaceChild(text, span);
+        unwrapHighlightSpan(span);
       }
     });
     state.highlightSpans = {};
@@ -1314,6 +1495,35 @@
     }
     state.markers = {};
     document.querySelectorAll('.wn-annot-region.wn-annotator').forEach((el) => el.remove());
+  }
+
+  function removeRenderedAnnotation(id) {
+    const markerEntry = state.markers[id];
+    if (markerEntry && markerEntry.el && markerEntry.el.parentNode) {
+      markerEntry.el.parentNode.removeChild(markerEntry.el);
+    }
+    delete state.markers[id];
+
+    const highlight =
+      state.highlightSpans[id] || document.querySelector(`.wn-annot-highlight[data-wn-annot-id="${id}"]`);
+    if (highlight) {
+      unwrapHighlightSpan(highlight);
+      delete state.highlightSpans[id];
+    }
+
+    const region = document.querySelector(`.wn-annot-region.wn-annotator[data-wn-annot-id="${id}"]`);
+    if (region && region.parentNode) {
+      region.parentNode.removeChild(region);
+    }
+  }
+
+  function renumberMarkers() {
+    Object.entries(state.markers).forEach(([id, entry]) => {
+      const idx = state.annotations.findIndex((a) => a.id === id);
+      if (idx !== -1) {
+        entry.el.textContent = idx + 1;
+      }
+    });
   }
 
   function showOutline(rect) {
@@ -1427,8 +1637,12 @@
     if (annotation.pageKey !== normalizePageKey(window.location.href)) return;
     const rect = getViewportRect(annotation, targetNode);
     if (!rect) return;
+    const existingMarker = state.markers[annotation.id];
+    if (existingMarker && existingMarker.el && existingMarker.el.parentNode) {
+      existingMarker.el.parentNode.removeChild(existingMarker.el);
+    }
     if (annotation.type === 'region') {
-      ensureRegionRect(annotation.target.rect);
+      ensureRegionRect(annotation);
     }
     const marker = document.createElement('div');
     marker.className = 'wn-annot-marker wn-annotator';
@@ -1469,9 +1683,15 @@
     return null;
   }
 
-  function ensureRegionRect(rect) {
+  function ensureRegionRect(annotation) {
+    const rect = annotation.target.rect;
+    const existing = document.querySelector(`.wn-annot-region.wn-annotator[data-wn-annot-id="${annotation.id}"]`);
+    if (existing && existing.parentNode) {
+      existing.parentNode.removeChild(existing);
+    }
     const box = document.createElement('div');
     box.className = 'wn-annot-region wn-annotator';
+    box.dataset.wnAnnotId = annotation.id;
     box.style.left = `${rect.x}px`;
     box.style.top = `${rect.y}px`;
     box.style.width = `${rect.w}px`;
@@ -1533,7 +1753,7 @@
   }
 
   function renderList() {
-    // Reconstruit la liste des annotations du panneau avec filtrage et numérotation
+    // Rebuild the panel list with filtering and numbering
     const list = state.panel.querySelector('.wn-annot-list');
     const title = state.panel.querySelector('h3');
     list.innerHTML = '';
@@ -1579,10 +1799,23 @@
       const meta = document.createElement('div');
       meta.className = 'wn-annot-meta';
       const typeLabel = ann.type.toUpperCase();
-      const pageLabel = ann.pageUrl ? new URL(ann.pageUrl, window.location.href).pathname : '';
-      meta.textContent = `${typeLabel} • ${new Date(ann.createdAt).toLocaleString()} • ${pageLabel}`;
+      meta.textContent = `${typeLabel} • ${new Date(ann.createdAt).toLocaleString()}`;
+      const topRight = document.createElement('div');
+      topRight.className = 'wn-annot-card-top-right';
+      topRight.appendChild(meta);
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.type = 'button';
+      deleteBtn.className = 'wn-annot-delete wn-annotator';
+      deleteBtn.setAttribute('aria-label', 'Delete this annotation');
+      deleteBtn.innerHTML = iconTrash();
+      deleteBtn.addEventListener('click', (evt) => {
+        evt.stopPropagation();
+        deleteAnnotation(ann.id);
+      });
+      topRight.appendChild(deleteBtn);
       top.appendChild(topLeft);
-      top.appendChild(meta);
+      top.appendChild(topRight);
       const comment = document.createElement('div');
       comment.className = 'wn-annot-comment';
       comment.textContent = ann.comment || '—';
@@ -1613,8 +1846,28 @@
     });
   }
 
+  function deleteAnnotation(id) {
+    const idx = state.annotations.findIndex((a) => a.id === id);
+    if (idx === -1) return;
+    state.annotations.splice(idx, 1);
+    saveAnnotations();
+    removeRenderedAnnotation(id);
+    renderList();
+    renumberMarkers();
+  }
+
+  async function deleteAllAnnotations() {
+    if (!state.annotations.length) return;
+    const confirmDelete = await confirmDialog('Delete all annotations?', 'Delete');
+    if (!confirmDelete) return;
+    state.annotations = [];
+    saveAnnotations();
+    clearRenderedAnnotations();
+    renderList();
+  }
+
   function exportAnnotations() {
-    // Exporte les annotations locales dans un fichier JSON nommé avec le site et l'heure
+    // Export local annotations to a JSON file named with site and time
     const payload = buildAnnotationsPayload();
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -1636,34 +1889,9 @@
   async function emailAnnotations() {
     const payload = buildAnnotationsPayload();
     const data = JSON.stringify(payload, null, 2);
-    const filename = buildFilename();
-    const blob = new Blob([data], { type: 'application/json' });
-    const hasFileCtor = typeof File !== 'undefined';
-    const file = hasFileCtor ? new File([blob], filename, { type: 'application/json' }) : null;
-    const canShareFile = file && navigator.canShare && navigator.canShare({ files: [file] });
-
-    if (canShareFile) {
-      try {
-        await navigator.share({
-          title: 'Annotations Uxnote',
-          text: 'Fichier JSON des annotations en pièce jointe.',
-          files: [file]
-        });
-        return;
-      } catch (err) {
-        console.warn('Partage email annulé ou indisponible', err);
-      }
-    }
-
-    // Fallback : on télécharge le JSON et on ouvre un brouillon email sans injecter le code brut
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
-    const body = encodeURIComponent(`Fichier JSON téléchargé : ${filename}. Ajoute-le en pièce jointe si besoin.`);
-    window.location.href = `mailto:?subject=Annotations&body=${body}`;
+    const subject = encodeURIComponent(buildFilename());
+    const body = encodeURIComponent(data);
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
   }
 
   function generateId() {
@@ -1671,15 +1899,15 @@
   }
 
   function handleImportFile(evt) {
-    // Lecture d'un fichier JSON importé et re-render complet des annotations
+    // Read an imported JSON file and re-render annotations
     const file = evt.target.files && evt.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       try {
         const parsed = JSON.parse(reader.result);
         const imported = Array.isArray(parsed) ? parsed : parsed.annotations;
-        if (!Array.isArray(imported)) throw new Error('Format JSON invalide');
+        if (!Array.isArray(imported)) throw new Error('Invalid JSON format');
         clearRenderedAnnotations();
         state.annotations = imported.map((ann) => ({
           ...ann,
@@ -1690,13 +1918,13 @@
         saveAnnotations();
         restoreAnnotations();
       } catch (err) {
-        alert('Import failed: ' + err.message);
+        await alertDialog('Import failed: ' + err.message, 'Import error');
       } finally {
         evt.target.value = '';
       }
     };
-    reader.onerror = () => {
-      alert('Unable to read file.');
+    reader.onerror = async () => {
+      await alertDialog('Unable to read file.', 'Import error');
       evt.target.value = '';
     };
     reader.readAsText(file);
@@ -1713,19 +1941,19 @@
       str
         .toLowerCase()
         .replace(/[^a-z0-9]+/gi, '-')
-        .replace(/^-+|-+$/g, '') || 'anotations';
+        .replace(/^-+|-+$/g, '') || 'annotations';
     let base;
     if (rawTitle) {
       base = `${slugify(rawTitle)}-annotations`;
     } else if (window.location && window.location.hostname) {
-      base = `${slugify(window.location.hostname)}-Anotations`;
+      base = `${slugify(window.location.hostname)}-annotations`;
     } else {
-      base = 'Anotations';
+      base = 'annotations';
     }
     return `${base}_${date}_${time}.json`;
   }
 
-  // Icônes: placeholders vers des SVG externes; base configurable via data-icons sur le script
+  // Icons: placeholders to external SVGs; base configurable via data-icons on the script
   const iconPath = (file) => `${iconBase}/${file}`;
   function iconWordmark() {
     return `<img class="wn-annot-logo-img" src="${iconPath('uxnote-logo.svg')}" alt="Uxnote logo" />`;
@@ -1747,6 +1975,20 @@
   }
   function iconMail() {
     return `<img class="wn-annot-img" src="${iconPath('uxnote-icon-mail.svg')}" alt="Mail" />`;
+  }
+  function iconTrash() {
+    return `
+      <svg class="wn-annot-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path
+          d="M4 7h16M10 11v6M14 11v6M6.5 7l.8 11.2a2 2 0 0 0 2 1.8h5.4a2 2 0 0 0 2-1.8L17.5 7M9 7V5.4A1.4 1.4 0 0 1 10.4 4h3.2A1.4 1.4 0 0 1 15 5.4V7"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+    `;
   }
   function iconPanel() {
     return `<img class="wn-annot-img" src="${iconPath('uxnote-icon-panel.svg')}" alt="Panel" />`;
