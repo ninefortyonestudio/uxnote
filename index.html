@@ -128,6 +128,10 @@
       document.querySelectorAll('.wn-annotator').forEach((el) => {
         el.style.display = show ? '' : 'none';
       });
+      document.querySelectorAll('.wn-annot-highlight').forEach((span) => {
+        span.style.backgroundColor = show ? '' : 'transparent';
+        span.style.boxShadow = show ? '' : 'none';
+      });
     };
 
     const loadDemo = () => {
