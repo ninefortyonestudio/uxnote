@@ -283,6 +283,8 @@
         z-index: 2147483000;
         font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
         left: auto;
+        display: flex;
+        flex-direction: column;
       }
       .wn-annot-panel h3 {
         margin: 0 0 14px;
@@ -365,6 +367,10 @@
         width: 16px;
         height: 16px;
       }
+      .wn-annot-list {
+        flex: 1 1 auto;
+        overflow: auto;
+      }
       .wn-annot-item {
         background: #ffffff;
         border: 1px solid rgba(109, 86, 199, 0.14);
@@ -426,6 +432,23 @@
       .wn-annot-delete svg {
         width: 16px;
         height: 16px;
+      }
+      .wn-annot-footer {
+        flex: 0 0 auto;
+        padding-top: 10px;
+        margin-top: auto;
+        text-align: center;
+        font-size: 12px;
+        color: #7b7588;
+        background: linear-gradient(180deg, transparent, rgba(255,255,255,0.75));
+        position: sticky;
+        bottom: 0;
+        padding-bottom: 6px;
+      }
+      .wn-annot-footer a {
+        color: inherit;
+        text-decoration: none;
+        font-weight: 700;
       }
       .wn-annot-number {
         min-width: 32px;
@@ -750,7 +773,7 @@
     logo.innerHTML = iconWordmark();
     frag.appendChild(logo);
 
-    const editButtons = [
+  const editButtons = [
       { action: 'mode', mode: 'text', tip: 'Highlight text', icon: iconPen() },
       { action: 'mode', mode: 'element', tip: 'Annotate an element', icon: iconTarget() },
       { action: 'mode', mode: 'region', tip: 'Free area', icon: iconRect() }
@@ -1237,9 +1260,8 @@
   function positionPanel() {
     if (!state.panel || !state.toolbar) return;
     const p = state.panel;
-    const barRect = state.toolbar.getBoundingClientRect();
     const inset = 18;
-    const gap = 10;
+    const barRect = state.toolbar.getBoundingClientRect();
 
     p.style.width = `min(360px, calc(100vw - ${inset * 2}px))`;
     p.style.maxHeight = `calc(100vh - ${inset * 2}px)`;
@@ -1255,12 +1277,6 @@
     } else if (position === 'right') {
       p.style.right = `${barRect.width + inset}px`;
       p.style.left = `${inset}px`;
-    } else if (position === 'top') {
-      p.style.top = `${barRect.bottom + gap}px`;
-      p.style.bottom = `${inset}px`;
-    } else {
-      p.style.top = `${inset}px`;
-      p.style.bottom = `${barRect.height + gap}px`;
     }
   }
 
@@ -1801,12 +1817,12 @@
 
   function renderList() {
     // Rebuild the panel list with filtering and numbering
-    const list = state.panel.querySelector('.wn-annot-list');
-    const title = state.panel.querySelector('h3');
-    list.innerHTML = '';
-    if (!state.annotations.length) {
-      const empty = document.createElement('div');
-      empty.className = 'wn-annot-empty';
+      const list = state.panel.querySelector('.wn-annot-list');
+      const title = state.panel.querySelector('h3');
+      list.innerHTML = '';
+      if (!state.annotations.length) {
+        const empty = document.createElement('div');
+        empty.className = 'wn-annot-empty';
       empty.textContent = 'No annotations yet.';
       list.appendChild(empty);
       if (title) title.textContent = 'Page annotations (0)';
@@ -1891,6 +1907,19 @@
       item.addEventListener('click', () => focusAnnotation(ann.id, true, ann.pageUrl, ann.pageKey));
       list.appendChild(item);
     });
+
+    let footer = state.panel.querySelector('.wn-annot-footer');
+    if (!footer) {
+      footer = document.createElement('div');
+      footer.className = 'wn-annot-footer wn-annotator';
+      const link = document.createElement('a');
+      link.href = 'https://ninefortyone.studio';
+      link.target = '_blank';
+      link.rel = 'noreferrer noopener';
+      link.textContent = '© UxNote – by NineFortyOne.Studio';
+      footer.appendChild(link);
+      state.panel.appendChild(footer);
+    }
   }
 
   function deleteAnnotation(id) {
