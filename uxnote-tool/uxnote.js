@@ -32,6 +32,7 @@
     commentModal: null,
     dialogModal: null,
     markerLayer: null,
+    elementOutlines: {},
     dragging: false,
     dragOffset: { x: 0, y: 0 },
     customPosition: false,
@@ -553,6 +554,13 @@
         pointer-events: none;
         z-index: 2147482500;
       }
+      .wn-annot-element-outline {
+        position: absolute;
+        border: 2px dashed #4e9cf6;
+        background: rgba(78,156,246,0.08);
+        pointer-events: none;
+        z-index: 2147482495;
+      }
       .wn-annot-region {
         position: absolute;
         border: 2px solid rgba(255, 172, 66, 0.9);
@@ -1065,13 +1073,14 @@
     searchInput.addEventListener('input', trigger);
   }
 
-  function setMode(nextMode) {
+  function setMode(nextMode, options = {}) {
+    const keepOutline = options.keepOutline;
     // Toggle annotation mode and refresh associated UI
     if (state.mode === nextMode) {
       state.mode = null;
       updateToolbarActive();
       hideTip();
-      hideOutline();
+      if (!keepOutline) hideOutline();
       clearRegionBox();
       return;
     }
@@ -1360,7 +1369,7 @@
     saveAnnotations();
     addMarkerForAnnotation(annotation);
     renderList();
-    setMode(null);
+    setMode(null, { keepOutline: true });
   }
 
   function handleElementHover(evt) {
@@ -1402,8 +1411,9 @@
     state.annotations.push(annotation);
     saveAnnotations();
     addMarkerForAnnotation(annotation);
+    ensureElementOutline(annotation);
     renderList();
-    setMode(null);
+    setMode(null, { keepOutline: true });
   }
 
   function handleRegionStart(evt) {
@@ -1503,6 +1513,11 @@
       markerEntry.el.parentNode.removeChild(markerEntry.el);
     }
     delete state.markers[id];
+
+    if (state.elementOutlines[id] && state.elementOutlines[id].parentNode) {
+      state.elementOutlines[id].parentNode.removeChild(state.elementOutlines[id]);
+    }
+    delete state.elementOutlines[id];
 
     const highlight =
       state.highlightSpans[id] || document.querySelector(`.wn-annot-highlight[data-wn-annot-id="${id}"]`);
@@ -1653,6 +1668,10 @@
     marker.addEventListener('click', () => focusAnnotation(annotation.id));
     state.markerLayer.appendChild(marker);
     state.markers[annotation.id] = { el: marker, rect };
+
+    if (annotation.type === 'element') {
+      ensureElementOutline(annotation);
+    }
   }
 
   function getViewportRect(annotation, targetNode) {
@@ -1699,6 +1718,30 @@
     document.body.appendChild(box);
   }
 
+  function ensureElementOutline(annotation) {
+    try {
+      const el = annotation.target?.xpath ? findNodeByXPath(annotation.target.xpath) : null;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      let outline = state.elementOutlines[annotation.id];
+      if (outline && outline.parentNode) {
+        // reuse existing
+      } else {
+        outline = document.createElement('div');
+        outline.className = 'wn-annot-element-outline wn-annotator';
+        outline.dataset.wnAnnotId = annotation.id;
+        document.body.appendChild(outline);
+        state.elementOutlines[annotation.id] = outline;
+      }
+      outline.style.left = `${rect.x + window.scrollX}px`;
+      outline.style.top = `${rect.y + window.scrollY}px`;
+      outline.style.width = `${rect.width}px`;
+      outline.style.height = `${rect.height}px`;
+    } catch (err) {
+      // ignore
+    }
+  }
+
   function refreshMarkers() {
     Object.entries(state.markers).forEach(([id, entry]) => {
       const ann = state.annotations.find((a) => a.id === id);
@@ -1708,6 +1751,10 @@
       entry.rect = rect;
       entry.el.style.left = `${rect.x + rect.w - 6}px`;
       entry.el.style.top = `${rect.y + 6}px`;
+
+      if (ann.type === 'element') {
+        ensureElementOutline(ann);
+      }
     });
   }
 
