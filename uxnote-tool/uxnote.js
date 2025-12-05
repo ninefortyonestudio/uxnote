@@ -429,6 +429,32 @@
       .wn-annot-delete:active {
         transform: translateY(1px);
       }
+      .wn-annot-edit {
+        border: 1px solid rgba(109, 86, 199, 0.22);
+        background: rgba(109, 86, 199, 0.08);
+        color: #4b4557;
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        cursor: pointer;
+        transition: all 0.12s ease;
+      }
+      .wn-annot-edit:hover {
+        background: rgba(109, 86, 199, 0.14);
+        border-color: rgba(109, 86, 199, 0.3);
+        color: #352f46;
+      }
+      .wn-annot-edit:active {
+        transform: translateY(1px);
+      }
+      .wn-annot-edit svg {
+        width: 16px;
+        height: 16px;
+      }
       .wn-annot-delete svg {
         width: 16px;
         height: 16px;
@@ -474,6 +500,13 @@
         text-align: right;
         word-break: break-word;
         line-height: 1.4;
+      }
+      .wn-annot-meta-bottom {
+        display: block;
+        margin-left: auto;
+        margin-top: 10px;
+        width: 100%;
+        text-align: right;
       }
       .wn-annot-priority {
         display: inline-flex;
@@ -1860,12 +1893,22 @@
       topLeft.appendChild(number);
       topLeft.appendChild(prioChip);
       const meta = document.createElement('div');
-      meta.className = 'wn-annot-meta';
+      meta.className = 'wn-annot-meta wn-annot-meta-bottom';
       const typeLabel = ann.type.toUpperCase();
       meta.textContent = `${typeLabel} • ${new Date(ann.createdAt).toLocaleString()}`;
       const topRight = document.createElement('div');
       topRight.className = 'wn-annot-card-top-right';
-      topRight.appendChild(meta);
+
+      const editBtn = document.createElement('button');
+      editBtn.type = 'button';
+      editBtn.className = 'wn-annot-edit wn-annotator';
+      editBtn.setAttribute('aria-label', 'Edit this annotation');
+      editBtn.innerHTML = iconEdit();
+      editBtn.addEventListener('click', async (evt) => {
+        evt.stopPropagation();
+        await editAnnotation(ann.id);
+      });
+      topRight.appendChild(editBtn);
 
       const deleteBtn = document.createElement('button');
       deleteBtn.type = 'button';
@@ -1904,6 +1947,7 @@
       item.appendChild(comment);
       item.appendChild(snippetWrap);
       item.appendChild(showMore);
+      item.appendChild(meta);
       item.addEventListener('click', () => focusAnnotation(ann.id, true, ann.pageUrl, ann.pageKey));
       list.appendChild(item);
     });
@@ -1930,6 +1974,18 @@
     removeRenderedAnnotation(id);
     renderList();
     renumberMarkers();
+  }
+
+  async function editAnnotation(id) {
+    const ann = state.annotations.find((a) => a.id === id);
+    if (!ann) return;
+    const res = await askForComment('Edit this annotation', ann.comment || '', ann.priority || 'medium');
+    if (!res) return;
+    const { comment, priority } = res;
+    ann.comment = comment.trim();
+    ann.priority = priority || 'medium';
+    saveAnnotations();
+    renderList();
   }
 
   async function deleteAllAnnotations() {
@@ -2051,6 +2107,14 @@
   }
   function iconMail() {
     return `<img class="wn-annot-img" src="${iconPath('uxnote-icon-mail.svg')}" alt="Mail" />`;
+  }
+  function iconEdit() {
+    return `
+      <svg class="wn-annot-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 15.5V19h3.5l9.9-9.9-3.5-3.5L4 15.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+        <path d="M14.3 5.4 17.8 8.9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+      </svg>
+    `;
   }
   function iconTrash() {
     return `
