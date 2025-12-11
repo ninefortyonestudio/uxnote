@@ -934,7 +934,8 @@
   const editButtons = [
       { action: 'mode', mode: 'text', tip: 'Highlight text', icon: iconPen() },
       { action: 'mode', mode: 'element', tip: 'Annotate an element', icon: iconTarget() },
-      { action: 'mode', mode: 'region', tip: 'Free area', icon: iconRect() }
+      // Region tool temporarily hidden; keep code for future reactivation
+      // { action: 'mode', mode: 'region', tip: 'Free area', icon: iconRect() }
     ];
     const exportButtons = [
       { action: 'export', tip: 'Export JSON', icon: iconDownload() },
@@ -1239,9 +1240,11 @@
   function bindGlobalHandlers() {
     // Global subscriptions to mouse/keyboard/resize to keep UI in sync
     document.addEventListener('mouseup', handleTextSelection);
+    document.addEventListener('touchend', handleTextSelection);
+    document.addEventListener('pointerup', handleTextSelection);
     document.addEventListener('mousemove', handleElementHover);
     document.addEventListener('click', handleElementClick, true);
-    document.addEventListener('mousedown', handleRegionStart, true);
+    document.addEventListener('pointerdown', handleRegionPointerStart, { capture: true, passive: false });
     window.addEventListener('resize', refreshMarkers);
     window.addEventListener('resize', applyPageOffset);
     window.addEventListener('resize', positionPanel);
@@ -1665,19 +1668,23 @@
     setMode(null, { keepOutline: true });
   }
 
-  function handleRegionStart(evt) {
-    // Draw a free area (click + drag) then create an annotation
+  function handleRegionPointerStart(evt) {
+    // Draw a free area (pointer/touch drag) then create an annotation
     if (state.mode !== 'region') return;
     if (isWithinAnnotator(evt.target)) return;
+    if (evt.pointerType === 'mouse' && evt.button !== 0) return;
     evt.preventDefault();
+    evt.stopPropagation();
     const startX = evt.pageX;
     const startY = evt.pageY;
+    const pointerId = evt.pointerId;
     const box = document.createElement('div');
     box.className = 'wn-annot-region wn-annotator';
     document.body.appendChild(box);
     state.regionBox = box;
 
     const move = (moveEvt) => {
+      if (moveEvt.pointerId !== pointerId) return;
       const x = Math.min(startX, moveEvt.pageX);
       const y = Math.min(startY, moveEvt.pageY);
       const w = Math.abs(moveEvt.pageX - startX);
@@ -1688,9 +1695,10 @@
       box.style.height = `${h}px`;
     };
 
-    const up = async () => {
-      document.removeEventListener('mousemove', move, true);
-      document.removeEventListener('mouseup', up, true);
+    const up = async (upEvt) => {
+      if (upEvt.pointerId !== pointerId) return;
+      document.removeEventListener('pointermove', move, true);
+      document.removeEventListener('pointerup', up, true);
       const rect = box.getBoundingClientRect();
       if (rect.width < 5 || rect.height < 5) {
         clearRegionBox();
@@ -1702,11 +1710,20 @@
         return;
       }
       const { comment, priority } = res;
+      const xAbs = rect.x + window.scrollX;
+      const yAbs = rect.y + window.scrollY;
       const id = generateId();
       const annotation = {
         id,
         type: 'region',
-        target: { rect: { x: rect.x + window.scrollX, y: rect.y + window.scrollY, w: rect.width, h: rect.height } },
+        target: {
+          rect: {
+            x: xAbs,
+            y: yAbs,
+            w: rect.width,
+            h: rect.height
+          }
+        },
         comment: comment.trim(),
         priority: priority || 'medium',
         snippet: 'Free area',
@@ -1721,8 +1738,8 @@
       setMode(null);
     };
 
-    document.addEventListener('mousemove', move, true);
-    document.addEventListener('mouseup', up, true);
+    document.addEventListener('pointermove', move, true);
+    document.addEventListener('pointerup', up, true);
   }
 
   function clearRegionBox() {
@@ -1754,6 +1771,10 @@
     }
     state.markers = {};
     document.querySelectorAll('.wn-annot-region.wn-annotator').forEach((el) => el.remove());
+    Object.values(state.elementOutlines || {}).forEach((outline) => {
+      if (outline && outline.parentNode) outline.parentNode.removeChild(outline);
+    });
+    state.elementOutlines = {};
   }
 
   function removeRenderedAnnotation(id) {
@@ -1940,7 +1961,7 @@
       return { x: r.x, y: r.y, w: r.width, h: r.height };
     }
     if (annotation.type === 'region') {
-      const rect = annotation.target.rect;
+      const rect = normalizeRegionRect(annotation.target.rect);
       return {
         x: rect.x - window.scrollX,
         y: rect.y - window.scrollY,
@@ -1952,7 +1973,7 @@
   }
 
   function ensureRegionRect(annotation) {
-    const rect = annotation.target.rect;
+    const rect = normalizeRegionRect(annotation.target.rect);
     const existing = document.querySelector(`.wn-annot-region.wn-annotator[data-wn-annot-id="${annotation.id}"]`);
     if (existing && existing.parentNode) {
       existing.parentNode.removeChild(existing);
@@ -2035,7 +2056,8 @@
         flash(el);
       }
     } else if (ann.type === 'region') {
-      window.scrollTo({ top: ann.target.rect.y - 40, left: ann.target.rect.x, behavior: 'smooth' });
+      const r = normalizeRegionRect(ann.target.rect);
+      window.scrollTo({ top: r.y - 40, left: r.x, behavior: 'smooth' });
     }
   }
 
@@ -2074,7 +2096,7 @@
       state.bmcInner.className = 'wn-annot-bmc-inner wn-annotator';
       state.bmcLabel = document.createElement('div');
       state.bmcLabel.className = 'wn-annot-bmc-label wn-annotator';
-      state.bmcLabel.textContent = 'Support UxNote – buy us a coffee';
+      state.bmcLabel.textContent = 'Support UxNote – buy me a coffee';
       state.bmcInner.appendChild(state.bmcLabel);
       state.bmcSlot.appendChild(state.bmcInner);
     }
@@ -2469,6 +2491,7 @@
     saveAnnotations();
     clearRenderedAnnotations();
     renderList();
+    renumberMarkers();
   }
 
   function exportAnnotations() {
@@ -2670,6 +2693,30 @@
     } catch (err) {
       return `${window.location.origin}${window.location.pathname}`;
     }
+  }
+
+  function normalizeRegionRect(rect) {
+    if (!rect) return { x: 0, y: 0, w: 0, h: 0 };
+    const hasRatios =
+      rect.xFrac != null && rect.yFrac != null && rect.wFrac != null && rect.hFrac != null;
+    if (hasRatios) {
+      const docW =
+        document.documentElement.scrollWidth || window.innerWidth || rect.docW || rect.w || 1;
+      const docH =
+        document.documentElement.scrollHeight || window.innerHeight || rect.docH || rect.h || 1;
+      return {
+        x: rect.xFrac * docW,
+        y: rect.yFrac * docH,
+        w: rect.wFrac * docW,
+        h: rect.hFrac * docH
+      };
+    }
+    return {
+      x: rect.x || 0,
+      y: rect.y || 0,
+      w: rect.w || 0,
+      h: rect.h || 0
+    };
   }
 
   function focusPendingAnnotation() {
