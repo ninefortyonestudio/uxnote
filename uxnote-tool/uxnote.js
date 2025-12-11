@@ -17,6 +17,7 @@
   const dockMode = (script && (script.dataset.dock || script.dataset.layout)) || '';
   const storageKey = `uxnote:site:${siteKey}`;
   const pendingFocusKey = `uxnote:pending:${siteKey}`;
+  const BMC_Z_INDEX = '2147483600';
 
   // Central state (positions, annotations, DOM elements, filters...)
   const state = {
@@ -41,7 +42,11 @@
       priority: 'all',
       query: ''
     },
-    hidden: false
+    hidden: false,
+    bmcSlot: null,
+    bmcInner: null,
+    bmcLabel: null,
+    bmcInjected: false
   };
 
   function init() {
@@ -510,9 +515,76 @@
         width: 16px;
         height: 16px;
       }
+      .wn-annot-bmc {
+        position: sticky;
+        bottom: 16px;
+        display: flex;
+        justify-content: center;
+        padding: 12px 0 0;
+        margin-bottom: 8px;
+        z-index: 2;
+        pointer-events: none;
+        width: 100%;
+      }
+      .wn-annot-bmc-inner {
+        position: relative;
+        display: inline-flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        pointer-events: auto;
+      }
+      .wn-annot-bmc-label {
+        position: absolute;
+        bottom: calc(100% + 12px);
+        left: 50%;
+        text-align: center;
+        font-size: 11px;
+        color: #fff;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateX(-50%) translateY(4px);
+        transition: all 0.16s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 8px 14px;
+        border-radius: 8px;
+        background: rgba(35, 31, 74, 0.92);
+        box-shadow: 0 10px 24px rgba(73, 64, 157, 0.2);
+        font-weight: 600;
+        white-space: nowrap;
+        pointer-events: none;
+      }
+      .wn-annot-bmc > * {
+        pointer-events: auto;
+      }
+      .wn-annot-bmc #bmc-wbtn {
+        position: relative !important;
+        inset: auto !important;
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12) !important;
+        width: 56px !important;
+        height: 56px !important;
+        min-width: 56px !important;
+        min-height: 56px !important;
+        max-width: 56px !important;
+        max-height: 56px !important;
+        border-radius: 50% !important;
+        padding: 0 !important;
+      }
+      .wn-annot-bmc #bmc-wbtn img {
+        width: 28px !important;
+        height: 28px !important;
+      }
+      .wn-annot-bmc-inner:hover .wn-annot-bmc-label,
+      .wn-annot-bmc-inner:focus-within .wn-annot-bmc-label {
+        opacity: 1;
+        visibility: visible;
+        transform: translateX(-50%) translateY(0);
+      }
       .wn-annot-footer {
         flex: 0 0 auto;
-        padding-top: 10px;
+        padding-top: 6px;
         margin-top: auto;
         text-align: center;
         font-size: 12px;
@@ -1172,6 +1244,8 @@
     window.addEventListener('resize', applyPageOffset);
     window.addEventListener('resize', positionPanel);
     window.addEventListener('resize', positionTip);
+    window.addEventListener('resize', positionBmcWidget);
+    window.addEventListener('resize', liftBmcLayers);
     window.addEventListener('scroll', refreshMarkers, { passive: true });
   }
 
@@ -1347,6 +1421,9 @@
     // Restore default flex layout when re-opening so the footer stays pinned
     state.panel.style.display = isHidden ? '' : 'none';
     updateToggleActive();
+    syncBmcVisibility();
+    positionBmcWidget();
+    liftBmcLayers();
   }
 
   function toggleAnnotatorVisibility() {
@@ -1363,11 +1440,14 @@
       clearRegionBox();
     }
     syncVisibilityButton();
+    syncBmcVisibility();
+    liftBmcLayers();
     applyPageOffset();
     if (!hidden) {
       refreshMarkers();
       positionPanel();
       positionTip();
+      positionBmcWidget();
     }
   }
 
@@ -1421,6 +1501,7 @@
       p.style.right = `${barRect.width + inset}px`;
       p.style.left = `${inset}px`;
     }
+    positionBmcWidget();
   }
 
   function handleDragStart(evt) {
@@ -1966,6 +2047,132 @@
     }, 800);
   }
 
+  function ensureFooter() {
+    if (!state.panel) return null;
+    let footer = state.panel.querySelector('.wn-annot-footer');
+    if (!footer) {
+      footer = document.createElement('div');
+      footer.className = 'wn-annot-footer wn-annotator';
+      const link = document.createElement('a');
+      link.href = 'https://ninefortyone.studio';
+      link.target = '_blank';
+      link.rel = 'noreferrer noopener';
+      link.textContent = '© UxNote – by NineFortyOne.Studio';
+      footer.appendChild(link);
+      state.panel.appendChild(footer);
+    }
+    return footer;
+  }
+
+  function ensureBmcSlot() {
+    if (!state.panel) return null;
+    if (!state.bmcSlot) {
+      state.bmcSlot = document.createElement('div');
+      state.bmcSlot.className = 'wn-annot-bmc wn-annotator';
+      state.bmcInner = document.createElement('div');
+      state.bmcInner.className = 'wn-annot-bmc-inner wn-annotator';
+      state.bmcLabel = document.createElement('div');
+      state.bmcLabel.className = 'wn-annot-bmc-label wn-annotator';
+      state.bmcLabel.textContent = 'Support UxNote – buy us a coffee';
+      state.bmcInner.appendChild(state.bmcLabel);
+      state.bmcSlot.appendChild(state.bmcInner);
+    }
+    if (!state.bmcSlot.isConnected) {
+      state.panel.appendChild(state.bmcSlot);
+    }
+    if (state.bmcInner && state.bmcInner.parentElement !== state.bmcSlot) {
+      state.bmcSlot.appendChild(state.bmcInner);
+    }
+    if (state.bmcLabel && state.bmcLabel.parentElement !== state.bmcInner) {
+      state.bmcInner.insertBefore(state.bmcLabel, state.bmcInner.firstChild);
+    }
+    if (!state.bmcInjected) {
+      injectBmcScript();
+    }
+    return state.bmcSlot;
+  }
+
+  function injectBmcScript() {
+    if (!state.bmcSlot || state.bmcInjected) return;
+    state.bmcInjected = true;
+    const script = document.createElement('script');
+    script.setAttribute('data-name', 'BMC-Widget');
+    script.setAttribute('data-cfasync', 'false');
+    script.src = 'https://cdnjs.buymeacoffee.com/1.0.0/widget.prod.min.js';
+    script.dataset.id = 'ninefortyonestudio';
+    script.dataset.description = 'Support me on Buy me a coffee!';
+    script.dataset.message = 'Buy me a coffee';
+    script.dataset.color = '#6d56c7';
+    script.dataset.position = 'Right';
+    script.dataset.x_margin = '18';
+    script.dataset.y_margin = '18';
+    script.onload = () => {
+      triggerBmcInitIfReady();
+      positionBmcWidget();
+      liftBmcLayers();
+      syncBmcVisibility();
+    };
+    script.onerror = () => {
+      state.bmcInjected = false;
+    };
+    const target = state.bmcInner || state.bmcSlot;
+    target.appendChild(script);
+    setTimeout(() => {
+      positionBmcWidget();
+      liftBmcLayers();
+      syncBmcVisibility();
+    }, 1200);
+  }
+
+  function triggerBmcInitIfReady() {
+    if (document.readyState === 'loading') return;
+    try {
+      window.dispatchEvent(new Event('DOMContentLoaded'));
+    } catch (err) {
+      // ignore
+    }
+  }
+
+  function liftBmcLayers() {
+    const btn = document.getElementById('bmc-wbtn');
+    const iframe = document.getElementById('bmc-iframe');
+    const closeBtn = document.getElementById('bmc-close-btn');
+    const overlay = iframe && iframe.parentElement;
+    [btn, iframe, closeBtn, overlay].forEach((el) => {
+      if (el) {
+        el.style.zIndex = BMC_Z_INDEX;
+      }
+    });
+  }
+
+  function positionBmcWidget() {
+    const btn = document.getElementById('bmc-wbtn');
+    if (!btn || !state.panel || !state.bmcSlot) return;
+    const target = state.bmcInner || state.bmcSlot;
+    if (btn.parentElement !== target) {
+      target.appendChild(btn);
+    }
+    btn.style.position = 'relative';
+    btn.style.left = 'auto';
+    btn.style.right = 'auto';
+    btn.style.bottom = 'auto';
+    btn.style.top = 'auto';
+    liftBmcLayers();
+  }
+
+  function syncBmcVisibility() {
+    const btn = document.getElementById('bmc-wbtn');
+    const shouldHide = state.panel && state.panel.style.display === 'none';
+    if (state.bmcSlot) {
+      const hideSlot = shouldHide || state.hidden || !btn;
+      state.bmcSlot.style.display = hideSlot ? 'none' : '';
+      if (state.bmcInner) state.bmcInner.style.display = hideSlot ? 'none' : '';
+    }
+    if (!btn) return;
+    const hiddenPanel = state.panel && state.panel.style.display === 'none';
+    btn.style.display = hiddenPanel || state.hidden ? 'none' : 'flex';
+  }
+
   function renderList() {
     // Rebuild the panel list with filtering and numbering
       const list = state.panel.querySelector('.wn-annot-list');
@@ -1977,6 +2184,13 @@
       empty.textContent = 'No annotations yet.';
       list.appendChild(empty);
       if (title) title.textContent = 'Page annotations (0)';
+      const footer = ensureFooter();
+      const slot = ensureBmcSlot();
+      if (slot && footer && slot.nextSibling !== footer) {
+        state.panel.insertBefore(slot, footer);
+      }
+      positionBmcWidget();
+      syncBmcVisibility();
       return;
     }
     const filtered = state.annotations
@@ -2070,18 +2284,13 @@
       list.appendChild(item);
     });
 
-    let footer = state.panel.querySelector('.wn-annot-footer');
-    if (!footer) {
-      footer = document.createElement('div');
-      footer.className = 'wn-annot-footer wn-annotator';
-      const link = document.createElement('a');
-      link.href = 'https://ninefortyone.studio';
-      link.target = '_blank';
-      link.rel = 'noreferrer noopener';
-      link.textContent = '© UxNote – by NineFortyOne.Studio';
-      footer.appendChild(link);
-      state.panel.appendChild(footer);
+    const footer = ensureFooter();
+    const slot = ensureBmcSlot();
+    if (slot && footer && slot.nextSibling !== footer) {
+      state.panel.insertBefore(slot, footer);
     }
+    positionBmcWidget();
+    syncBmcVisibility();
   }
 
   function deleteAnnotation(id) {
