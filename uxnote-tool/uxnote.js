@@ -1344,7 +1344,8 @@
 
   function togglePanel() {
     const isHidden = state.panel.style.display === 'none';
-    state.panel.style.display = isHidden ? 'block' : 'none';
+    // Restore default flex layout when re-opening so the footer stays pinned
+    state.panel.style.display = isHidden ? '' : 'none';
     updateToggleActive();
   }
 
