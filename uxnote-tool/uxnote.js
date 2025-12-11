@@ -29,6 +29,7 @@
     regionBox: null,
     toolbar: null,
     panel: null,
+    visibilityToggle: null,
     commentModal: null,
     dialogModal: null,
     markerLayer: null,
@@ -39,7 +40,8 @@
     filters: {
       priority: 'all',
       query: ''
-    }
+    },
+    hidden: false
   };
 
   function init() {
@@ -121,6 +123,40 @@
         border-radius: 50%;
         box-shadow: none;
       }
+      .wn-annot-visibility-btn {
+        position: fixed;
+        left: 12px;
+        bottom: 18px;
+        --wn-btn-size: 46px;
+        width: var(--wn-btn-size);
+        height: var(--wn-btn-size);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        border: 1px solid rgba(109, 86, 199, 0.15);
+        background: #f6f2fb;
+        color: #4b4557;
+        box-shadow: 0 8px 24px rgba(73, 64, 157, 0.18);
+        backdrop-filter: blur(10px);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        z-index: 2147483650;
+        padding: 0;
+      }
+      .wn-annot-visibility-btn:hover {
+        background: rgba(109, 86, 199, 0.12);
+      }
+      .wn-annot-visibility-btn:active {
+        background: rgba(109, 86, 199, 0.18);
+      }
+      .wn-annot-visibility-btn svg {
+        width: 20px;
+        height: 20px;
+      }
+      .wn-annot-visibility-btn.is-muted {
+        opacity: 0.32;
+      }
       .wn-annot-group {
         display: inline-flex;
         align-items: center;
@@ -159,6 +195,10 @@
           flex-basis: 16px;
           width: 16px;
         }
+        .wn-annot-visibility-btn {
+          --wn-btn-size: 42px;
+          left: 10px;
+        }
         .wn-annot-logo svg {
           width: 90px;
         }
@@ -175,6 +215,17 @@
         color: #fdfdff;
         box-shadow: 0 10px 24px rgba(109, 86, 199, 0.35);
         transform: translateY(0);
+      }
+      body.wn-annot-hidden .wn-annotator:not(.wn-annot-visibility-btn) {
+        display: none !important;
+      }
+      body.wn-annot-hidden .wn-annot-highlight {
+        background: transparent !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+      }
+      body.wn-annot-hidden .wn-annot-visibility-btn {
+        opacity: 0.26;
       }
       .wn-annot-icon {
         width: 20px;
@@ -902,6 +953,21 @@
     positionTip();
     updateToggleActive();
     initFilters();
+    createVisibilityToggle();
+  }
+
+  function createVisibilityToggle() {
+    if (state.visibilityToggle) return;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'wn-annot-visibility-btn wn-annotator';
+    btn.setAttribute('aria-label', 'Masquer Uxnote');
+    btn.innerHTML = iconEyeOpen();
+    btn.addEventListener('click', toggleAnnotatorVisibility);
+    state.visibilityToggle = btn;
+    document.body.appendChild(btn);
+    positionVisibilityToggle();
+    syncVisibilityButton();
   }
 
   function ensureCommentModal() {
@@ -1282,6 +1348,49 @@
     updateToggleActive();
   }
 
+  function toggleAnnotatorVisibility() {
+    setAnnotatorVisibility(!state.hidden);
+  }
+
+  function setAnnotatorVisibility(hidden) {
+    state.hidden = hidden;
+    document.body.classList.toggle('wn-annot-hidden', hidden);
+    if (hidden) {
+      setMode(null);
+      hideTip();
+      hideOutline();
+      clearRegionBox();
+    }
+    syncVisibilityButton();
+    applyPageOffset();
+    if (!hidden) {
+      refreshMarkers();
+      positionPanel();
+      positionTip();
+    }
+  }
+
+  function syncVisibilityButton() {
+    if (!state.visibilityToggle) return;
+    state.visibilityToggle.classList.toggle('is-muted', state.hidden);
+    state.visibilityToggle.innerHTML = state.hidden ? iconEyeClosed() : iconEyeOpen();
+    state.visibilityToggle.setAttribute('aria-label', state.hidden ? 'Afficher Uxnote' : 'Masquer Uxnote');
+    state.visibilityToggle.setAttribute('aria-pressed', state.hidden ? 'true' : 'false');
+  }
+
+  function positionVisibilityToggle() {
+    const btn = state.visibilityToggle;
+    if (!btn) return;
+    const inset = 18;
+    if (position === 'top') {
+      btn.style.top = `${inset}px`;
+      btn.style.bottom = '';
+    } else {
+      btn.style.bottom = `${inset}px`;
+      btn.style.top = '';
+    }
+  }
+
   function updateToggleActive() {
     if (!state.panel || !state.toolbar) return;
     const btn = state.toolbar.querySelector('button[data-action="toggle-panel"]');
@@ -1338,6 +1447,7 @@
       // ignore storage errors
     }
     updatePositionIcon();
+    positionVisibilityToggle();
     positionTip();
     positionPanel();
     applyPageOffset();
@@ -1367,9 +1477,17 @@
     ) {
       return;
     }
+    const body = document.body;
     if (!state.basePadding) captureBasePadding();
-    const barRect = state.toolbar.getBoundingClientRect();
     const base = state.basePadding;
+    if (state.hidden) {
+      body.style.paddingTop = `${base.top}px`;
+      body.style.paddingRight = `${base.right}px`;
+      body.style.paddingBottom = `${base.bottom}px`;
+      body.style.paddingLeft = `${base.left}px`;
+      return;
+    }
+    const barRect = state.toolbar.getBoundingClientRect();
     const next = { ...base };
     if (position === 'top') {
       next.top = base.top + barRect.height;
@@ -1380,7 +1498,6 @@
     } else if (position === 'right') {
       next.right = base.right + barRect.width;
     }
-    const body = document.body;
     body.style.paddingTop = `${next.top}px`;
     body.style.paddingRight = `${next.right}px`;
     body.style.paddingBottom = `${next.bottom}px`;
@@ -2135,6 +2252,59 @@
   }
   function iconSwap() {
     return `<img class="wn-annot-img" src="${iconPath('uxnote-icon-bottom.svg')}" alt="Toolbar bottom" />`;
+  }
+  function iconEyeOpen() {
+    return `
+      <svg class="wn-annot-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path
+          d="M2.5 12c1.8-3.6 5.3-6 9.5-6s7.7 2.4 9.5 6c-1.8 3.6-5.3 6-9.5 6s-7.7-2.4-9.5-6Z"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+        <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.6" />
+      </svg>
+    `;
+  }
+  function iconEyeClosed() {
+    return `
+      <svg class="wn-annot-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path
+          d="M5.2 7.1C3.7 8.1 2.5 9.7 1.8 12c1.8 3.6 5.3 6 9.5 6 1.7 0 3.3-.4 4.7-1.1"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+        <path
+          d="M9.5 9.5a3.5 3.5 0 0 0 5 5"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+        <path
+          d="M22.2 12c-.9-1.8-2.3-3.3-4-4.4-1-.7-2.1-1.3-3.3-1.7"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+        <path
+          d="M4 4l16 16"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+    `;
   }
 
   function normalizePageKey(url) {
