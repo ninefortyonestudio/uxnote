@@ -17,7 +17,7 @@
   const dockMode = (script && (script.dataset.dock || script.dataset.layout)) || '';
   const storageKey = `uxnote:site:${siteKey}`;
   const pendingFocusKey = `uxnote:pending:${siteKey}`;
-  const BMC_Z_INDEX = '2147483600';
+  const BMC_Z_INDEX = '2147483650';
 
   // Central state (positions, annotations, DOM elements, filters...)
   const state = {
@@ -59,6 +59,7 @@
     loadAnnotations();
     restoreAnnotations();
     focusPendingAnnotation();
+    bindBmcEvents();
     bindGlobalHandlers();
   }
 
@@ -1246,6 +1247,7 @@
     window.addEventListener('resize', positionTip);
     window.addEventListener('resize', positionBmcWidget);
     window.addEventListener('resize', liftBmcLayers);
+    window.addEventListener('resize', centerBmcPopup);
     window.addEventListener('scroll', refreshMarkers, { passive: true });
   }
 
@@ -1442,12 +1444,14 @@
     syncVisibilityButton();
     syncBmcVisibility();
     liftBmcLayers();
+    centerBmcPopup();
     applyPageOffset();
     if (!hidden) {
       refreshMarkers();
       positionPanel();
       positionTip();
       positionBmcWidget();
+      centerBmcPopup();
     }
   }
 
@@ -2089,6 +2093,7 @@
     if (!state.bmcInjected) {
       injectBmcScript();
     }
+    bindBmcEvents();
     return state.bmcSlot;
   }
 
@@ -2120,6 +2125,7 @@
     setTimeout(() => {
       positionBmcWidget();
       liftBmcLayers();
+      bindBmcEvents();
       syncBmcVisibility();
     }, 1200);
   }
@@ -2130,6 +2136,104 @@
       window.dispatchEvent(new Event('DOMContentLoaded'));
     } catch (err) {
       // ignore
+    }
+  }
+
+  function centerBmcPopup() {
+    const iframe = document.getElementById('bmc-iframe');
+    if (!iframe) return;
+    const overlay = iframe.parentElement;
+    if (!overlay || !overlay.style) return;
+    const closeBtn = document.getElementById('bmc-close-btn');
+    // Freeze transitions while we reposition to avoid slide-in from bottom
+    overlay.style.transition = 'none';
+    iframe.style.transition = 'none';
+    if (closeBtn) closeBtn.style.transition = 'none';
+
+    overlay.style.width = '100%';
+    overlay.style.height = '100%';
+    overlay.style.top = '0';
+    overlay.style.left = '0';
+    overlay.style.right = '0';
+    overlay.style.bottom = '0';
+    overlay.style.position = 'fixed';
+    overlay.style.background = overlay.style.background || 'rgba(28,22,48,0)';
+    overlay.style.transition = overlay.style.transition || 'opacity 0.22s ease, background 0.22s ease';
+    overlay.style.opacity = overlay.style.opacity || '0';
+    iframe.style.position = 'fixed';
+    iframe.style.left = '50%';
+    iframe.style.top = '50%';
+    iframe.style.right = 'auto';
+    iframe.style.bottom = 'auto';
+    iframe.style.transform = 'translate(-50%, -50%)';
+    iframe.style.opacity = iframe.style.opacity || '0';
+    iframe.style.transition = iframe.style.transition || 'opacity 0.22s ease';
+    iframe.style.width = 'min(520px, calc(100vw - 48px))';
+    iframe.style.maxWidth = '520px';
+    iframe.style.height = 'min(700px, calc(100vh - 96px))';
+    iframe.style.maxHeight = '700px';
+    iframe.style.borderRadius = '14px';
+    iframe.style.backgroundColor = iframe.style.backgroundColor || '#fff';
+    iframe.style.boxShadow = '0 18px 48px rgba(20, 16, 56, 0.28)';
+    if (closeBtn) {
+      closeBtn.style.position = 'fixed';
+      closeBtn.style.top = '24px';
+      closeBtn.style.right = '24px';
+      closeBtn.style.left = 'auto';
+      closeBtn.style.bottom = 'auto';
+      closeBtn.style.visibility = 'visible';
+      closeBtn.style.display = 'flex';
+      closeBtn.style.opacity = '0';
+    }
+
+    // Force reflow, then restore fade-only transitions
+    void iframe.offsetHeight;
+    overlay.style.transition = 'opacity 0.22s ease, background 0.22s ease';
+    iframe.style.transition = 'opacity 0.22s ease';
+    if (closeBtn) closeBtn.style.transition = 'opacity 0.22s ease';
+
+    requestAnimationFrame(() => {
+      overlay.style.opacity = '1';
+      overlay.style.background = 'rgba(28,22,48,0.36)';
+      iframe.style.opacity = '1';
+      iframe.style.transform = 'translate(-50%, -50%)';
+      if (closeBtn) closeBtn.style.opacity = '1';
+      liftBmcLayers();
+    });
+  }
+
+  function bindBmcEvents() {
+    const btn = document.getElementById('bmc-wbtn');
+    if (btn && !btn.dataset.wnBmcBound) {
+      btn.dataset.wnBmcBound = '1';
+      btn.addEventListener('click', () => {
+        setTimeout(() => {
+          centerBmcPopup();
+          liftBmcLayers();
+        }, 120);
+      });
+    }
+    const iframe = document.getElementById('bmc-iframe');
+    if (iframe && !iframe.dataset.wnBmcBound) {
+      iframe.dataset.wnBmcBound = '1';
+      iframe.addEventListener('load', () => {
+        centerBmcPopup();
+        liftBmcLayers();
+      });
+    }
+    const overlay = iframe && iframe.parentElement;
+    if (overlay && !overlay.dataset.wnBmcBound) {
+      overlay.dataset.wnBmcBound = '1';
+      overlay.addEventListener('click', () => {
+        fadeOutBmcPopup();
+      });
+    }
+    const closeBtn = document.getElementById('bmc-close-btn');
+    if (closeBtn && !closeBtn.dataset.wnBmcBound) {
+      closeBtn.dataset.wnBmcBound = '1';
+      closeBtn.addEventListener('click', () => {
+        fadeOutBmcPopup();
+      });
     }
   }
 
@@ -2145,6 +2249,26 @@
     });
   }
 
+  function fadeOutBmcPopup() {
+    const iframe = document.getElementById('bmc-iframe');
+    const overlay = iframe && iframe.parentElement;
+    const closeBtn = document.getElementById('bmc-close-btn');
+    if (overlay) {
+      overlay.style.transition = overlay.style.transition || 'opacity 0.2s ease, background 0.2s ease';
+      overlay.style.opacity = '0';
+      overlay.style.background = 'rgba(28,22,48,0)';
+    }
+    if (iframe) {
+      iframe.style.transition = iframe.style.transition || 'opacity 0.2s ease';
+      iframe.style.opacity = '0';
+      iframe.style.transform = 'translate(-50%, -50%)';
+    }
+    if (closeBtn) {
+      closeBtn.style.transition = closeBtn.style.transition || 'opacity 0.2s ease';
+      closeBtn.style.opacity = '0';
+    }
+  }
+
   function positionBmcWidget() {
     const btn = document.getElementById('bmc-wbtn');
     if (!btn || !state.panel || !state.bmcSlot) return;
@@ -2158,6 +2282,7 @@
     btn.style.bottom = 'auto';
     btn.style.top = 'auto';
     liftBmcLayers();
+    bindBmcEvents();
   }
 
   function syncBmcVisibility() {
