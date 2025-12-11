@@ -222,7 +222,7 @@
         box-shadow: 0 10px 24px rgba(109, 86, 199, 0.35);
         transform: translateY(0);
       }
-      body.wn-annot-hidden .wn-annotator:not(.wn-annot-visibility-btn) {
+      body.wn-annot-hidden .wn-annotator:not(.wn-annot-visibility-btn):not(.wn-annot-bmc):not(.wn-annot-bmc-inner):not(.wn-annot-bmc-label) {
         display: none !important;
       }
       body.wn-annot-hidden .wn-annot-highlight {
@@ -1442,16 +1442,12 @@
       clearRegionBox();
     }
     syncVisibilityButton();
-    syncBmcVisibility();
-    liftBmcLayers();
-    centerBmcPopup();
     applyPageOffset();
     if (!hidden) {
       refreshMarkers();
       positionPanel();
       positionTip();
-      positionBmcWidget();
-      centerBmcPopup();
+      // BMC widget intentionally left independent of visibility toggle
     }
   }
 
@@ -2157,6 +2153,8 @@
     overlay.style.right = '0';
     overlay.style.bottom = '0';
     overlay.style.position = 'fixed';
+    overlay.style.display = 'block';
+    overlay.style.pointerEvents = 'auto';
     overlay.style.background = overlay.style.background || 'rgba(28,22,48,0)';
     overlay.style.transition = overlay.style.transition || 'opacity 0.22s ease, background 0.22s ease';
     overlay.style.opacity = overlay.style.opacity || '0';
@@ -2175,6 +2173,8 @@
     iframe.style.borderRadius = '14px';
     iframe.style.backgroundColor = iframe.style.backgroundColor || '#fff';
     iframe.style.boxShadow = '0 18px 48px rgba(20, 16, 56, 0.28)';
+    iframe.style.display = 'block';
+    iframe.style.pointerEvents = 'auto';
     if (closeBtn) {
       closeBtn.style.position = 'fixed';
       closeBtn.style.top = '24px';
@@ -2184,6 +2184,7 @@
       closeBtn.style.visibility = 'visible';
       closeBtn.style.display = 'flex';
       closeBtn.style.opacity = '0';
+      closeBtn.style.pointerEvents = 'auto';
     }
 
     // Force reflow, then restore fade-only transitions
@@ -2257,16 +2258,30 @@
       overlay.style.transition = overlay.style.transition || 'opacity 0.2s ease, background 0.2s ease';
       overlay.style.opacity = '0';
       overlay.style.background = 'rgba(28,22,48,0)';
+      overlay.style.pointerEvents = 'none';
     }
     if (iframe) {
       iframe.style.transition = iframe.style.transition || 'opacity 0.2s ease';
       iframe.style.opacity = '0';
       iframe.style.transform = 'translate(-50%, -50%)';
+      iframe.style.pointerEvents = 'none';
     }
     if (closeBtn) {
       closeBtn.style.transition = closeBtn.style.transition || 'opacity 0.2s ease';
       closeBtn.style.opacity = '0';
+      closeBtn.style.pointerEvents = 'none';
     }
+    setTimeout(() => {
+      if (overlay) {
+        overlay.style.display = 'none';
+      }
+      if (iframe) {
+        iframe.style.display = 'none';
+      }
+      if (closeBtn) {
+        closeBtn.style.display = 'none';
+      }
+    }, 240);
   }
 
   function positionBmcWidget() {
@@ -2289,13 +2304,13 @@
     const btn = document.getElementById('bmc-wbtn');
     const shouldHide = state.panel && state.panel.style.display === 'none';
     if (state.bmcSlot) {
-      const hideSlot = shouldHide || state.hidden || !btn;
+      const hideSlot = shouldHide || !btn;
       state.bmcSlot.style.display = hideSlot ? 'none' : '';
       if (state.bmcInner) state.bmcInner.style.display = hideSlot ? 'none' : '';
     }
     if (!btn) return;
     const hiddenPanel = state.panel && state.panel.style.display === 'none';
-    btn.style.display = hiddenPanel || state.hidden ? 'none' : 'flex';
+    btn.style.display = hiddenPanel ? 'none' : 'flex';
   }
 
   function renderList() {
