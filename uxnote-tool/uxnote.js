@@ -46,7 +46,8 @@
     bmcSlot: null,
     bmcInner: null,
     bmcLabel: null,
-    bmcInjected: false
+    bmcInjected: false,
+    bmcOpen: false
   };
 
   function init() {
@@ -2136,6 +2137,7 @@
   }
 
   function centerBmcPopup() {
+    if (!state.bmcOpen) return;
     const iframe = document.getElementById('bmc-iframe');
     if (!iframe) return;
     const overlay = iframe.parentElement;
@@ -2208,6 +2210,7 @@
     if (btn && !btn.dataset.wnBmcBound) {
       btn.dataset.wnBmcBound = '1';
       btn.addEventListener('click', () => {
+        state.bmcOpen = true;
         setTimeout(() => {
           centerBmcPopup();
           liftBmcLayers();
@@ -2226,6 +2229,7 @@
     if (overlay && !overlay.dataset.wnBmcBound) {
       overlay.dataset.wnBmcBound = '1';
       overlay.addEventListener('click', () => {
+        state.bmcOpen = false;
         fadeOutBmcPopup();
       });
     }
@@ -2233,6 +2237,7 @@
     if (closeBtn && !closeBtn.dataset.wnBmcBound) {
       closeBtn.dataset.wnBmcBound = '1';
       closeBtn.addEventListener('click', () => {
+        state.bmcOpen = false;
         fadeOutBmcPopup();
       });
     }
@@ -2254,6 +2259,7 @@
     const iframe = document.getElementById('bmc-iframe');
     const overlay = iframe && iframe.parentElement;
     const closeBtn = document.getElementById('bmc-close-btn');
+    state.bmcOpen = false;
     if (overlay) {
       overlay.style.transition = overlay.style.transition || 'opacity 0.2s ease, background 0.2s ease';
       overlay.style.opacity = '0';
