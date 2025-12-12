@@ -46,13 +46,6 @@ header {
 .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 16px; border-radius: 14px; border: 1px solid var(--card-border); background: linear-gradient(135deg, rgba(109,86,199,0.25), rgba(89,217,227,0.18)); color: var(--text); cursor: pointer; transition: 0.2s; font-weight: 800; font-size: 14px; }
 .btn:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
 .btn.secondary { background: transparent; border-color: var(--card-border); }
-.btn.bmc {
-  background: linear-gradient(135deg, #ffdd00, #ffb400);
-  color: #111111;
-  border-color: rgba(0,0,0,0.08);
-  box-shadow: 0 10px 24px rgba(0,0,0,0.12);
-}
-.btn.bmc:hover { box-shadow: 0 14px 30px rgba(0,0,0,0.18); transform: translateY(-1px); }
 .hero { max-width: 1080px; margin: 30px auto; padding: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; align-items: center; }
 .hero h1 { font-size: clamp(32px, 4vw, 48px); margin: 0 0 12px; }
 .hero p { color: var(--muted); line-height: 1.6; }
@@ -96,7 +89,6 @@ header {
 .demo-footer-btn { width: 100%; padding: 12px 18px; margin-top: 18px; border-radius: 14px; border: 1px solid var(--card-border); background: linear-gradient(135deg, rgba(109,86,199,0.25), rgba(89,217,227,0.18)); color: #1f1f2b; font-weight: 800; font-size: 14px; cursor: pointer; box-shadow: 0 10px 24px rgba(109,86,199,0.2); }
 .demo-footer-btn:hover { transform: translateY(-1px); box-shadow: 0 14px 30px rgba(109,86,199,0.28); }
 .demo-footer-btn:active { transform: translateY(1px); }
-.bmc-button { width: 30px; right: 0px; }
 
 
 @keyframes float { 0%, 100% { transform: translateY(4px) scale(0.98); } 50% { transform: translateY(-6px) scale(1); } }

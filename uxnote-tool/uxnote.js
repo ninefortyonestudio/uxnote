@@ -143,10 +143,29 @@
         transition: all 0.2s ease;
         z-index: 2147483650;
         padding: 0;
+        position: fixed;
+      }
+      .wn-annot-visibility-btn::after {
+        content: attr(data-tip);
+        position: absolute;
+        left: 2px;
+        bottom: calc(100% + 10px);
+        background: rgba(35, 31, 74, 0.92);
+        color: #fff;
+        padding: 6px 8px;
+        border-radius: 8px;
+        font-size: 11px;
+        white-space: nowrap;
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(2px);
+        transition: opacity 0.12s ease, transform 0.12s ease;
       }
       .wn-annot-visibility-btn:hover {
         background: rgba(109, 86, 199, 0.12);
+        color: #3e384a;
       }
+      .wn-annot-visibility-btn:hover::after { opacity: 1; transform: translateY(0); }
       .wn-annot-visibility-btn:active {
         background: rgba(109, 86, 199, 0.18);
       }
@@ -963,6 +982,7 @@
     btn.type = 'button';
     btn.className = 'wn-annot-visibility-btn wn-annotator';
     btn.setAttribute('aria-label', 'Masquer Uxnote');
+    btn.setAttribute('data-tip', 'Masquer Uxnote');
     btn.innerHTML = iconEyeOpen();
     btn.addEventListener('click', toggleAnnotatorVisibility);
     state.visibilityToggle = btn;
@@ -1381,10 +1401,12 @@
 
   function syncVisibilityButton() {
     if (!state.visibilityToggle) return;
+    const label = state.hidden ? 'Show Uxnote' : 'Hide Uxnote';
     state.visibilityToggle.classList.toggle('is-muted', state.hidden);
     state.visibilityToggle.innerHTML = state.hidden ? iconEyeClosed() : iconEyeOpen();
-    state.visibilityToggle.setAttribute('aria-label', state.hidden ? 'Afficher Uxnote' : 'Masquer Uxnote');
+    state.visibilityToggle.setAttribute('aria-label', label);
     state.visibilityToggle.setAttribute('aria-pressed', state.hidden ? 'true' : 'false');
+    state.visibilityToggle.setAttribute('data-tip', label);
   }
 
   function positionVisibilityToggle() {
