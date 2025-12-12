@@ -24,7 +24,6 @@
     annotations: [],
     markers: {},
     highlightSpans: {},
-    overlay: null,
     outlineBox: null,
     toolbar: null,
     panel: null,
@@ -33,8 +32,6 @@
     dialogModal: null,
     markerLayer: null,
     elementOutlines: {},
-    dragging: false,
-    dragOffset: { x: 0, y: 0 },
     customPosition: false,
     filters: {
       priority: 'all',
@@ -43,8 +40,8 @@
     hidden: false
   };
 
+  // Entry point: load config, build UI, restore data
   function init() {
-    // Entry point: load config, build UI, restore data
     const savedPos = loadSavedPosition();
     if (savedPos) position = savedPos;
     captureBasePadding();
@@ -66,6 +63,7 @@
     };
   }
 
+  // Inline style injection keeps the tool self-contained (no external CSS fetch).
   function injectStyles() {
     // Inject scoped CSS to avoid polluting host page
     const style = document.createElement('style');
@@ -968,6 +966,7 @@
 
   function createVisibilityToggle() {
     if (state.visibilityToggle) return;
+    // Floating toggle to hide/show every annotator element
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'wn-annot-visibility-btn wn-annotator';
@@ -1294,6 +1293,7 @@
     }
   }
 
+  // Local storage helpers
   function loadAnnotations() {
     try {
       const stored = localStorage.getItem(storageKey);
@@ -1435,18 +1435,6 @@
     }
   }
 
-  function handleDragStart(evt) {
-    // Dragging disabled for fixed-bottom layout; kept for potential future use.
-  }
-
-  function handleDragMove(evt) {
-    // no-op
-  }
-
-  function handleDragEnd() {
-    // no-op
-  }
-
   function setPosition(next) {
     position = next === 'top' ? 'top' : 'bottom';
     const t = state.toolbar;
@@ -1517,8 +1505,8 @@
     body.style.paddingLeft = `${next.left}px`;
   }
 
+  // Capture a text selection and convert to annotation (text mode)
   async function handleTextSelection() {
-    // Capture a text selection and convert to annotation
     if (state.mode !== 'text') return;
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return;
@@ -1562,8 +1550,8 @@
     showOutline(rect);
   }
 
+  // Click on a DOM element to mark it and add a comment (element mode)
   async function handleElementClick(evt) {
-    // Click on a DOM element to mark it and add a comment
     if (state.mode !== 'element') return;
     const el = evt.target;
     if (!el || isWithinAnnotator(el)) return;
@@ -1840,6 +1828,7 @@
     });
   }
 
+  // Scroll/flash the target when selecting from the list or marker
   function focusAnnotation(id, allowNavigate = false, targetUrl, targetPageKey) {
     const ann = state.annotations.find((a) => a.id === id);
     if (!ann) return;
@@ -1897,9 +1886,9 @@
   }
 
 
+  // Rebuild the side panel list with filtering and numbering
   function renderList() {
-    // Rebuild the panel list with filtering and numbering
-      const list = state.panel.querySelector('.wn-annot-list');
+    const list = state.panel.querySelector('.wn-annot-list');
       const title = state.panel.querySelector('h3');
       list.innerHTML = '';
       if (!state.annotations.length) {
@@ -2135,9 +2124,6 @@
   }
   function iconTarget() {
     return `<img class="wn-annot-img" src="${iconPath('uxnote-icon-target.svg')}" alt="Element" />`;
-  }
-  function iconRect() {
-    return `<img class="wn-annot-img" src="${iconPath('uxnote-icon-rect.svg')}" alt="Region" />`;
   }
   function iconDownload() {
     return `<img class="wn-annot-img" src="${iconPath('uxnote-icon-download.svg')}" alt="Export" />`;
