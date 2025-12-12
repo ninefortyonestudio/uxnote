@@ -17,7 +17,6 @@
   const dockMode = (script && (script.dataset.dock || script.dataset.layout)) || '';
   const storageKey = `uxnote:site:${siteKey}`;
   const pendingFocusKey = `uxnote:pending:${siteKey}`;
-  const BMC_Z_INDEX = '2147483650';
 
   // Central state (positions, annotations, DOM elements, filters...)
   const state = {
@@ -42,12 +41,7 @@
       priority: 'all',
       query: ''
     },
-    hidden: false,
-    bmcSlot: null,
-    bmcInner: null,
-    bmcLabel: null,
-    bmcInjected: false,
-    bmcOpen: false
+    hidden: false
   };
 
   function init() {
@@ -60,7 +54,6 @@
     loadAnnotations();
     restoreAnnotations();
     focusPendingAnnotation();
-    bindBmcEvents();
     bindGlobalHandlers();
   }
 
@@ -223,7 +216,7 @@
         box-shadow: 0 10px 24px rgba(109, 86, 199, 0.35);
         transform: translateY(0);
       }
-      body.wn-annot-hidden .wn-annotator:not(.wn-annot-visibility-btn):not(.wn-annot-bmc):not(.wn-annot-bmc-inner):not(.wn-annot-bmc-label) {
+      body.wn-annot-hidden .wn-annotator:not(.wn-annot-visibility-btn) {
         display: none !important;
       }
       body.wn-annot-hidden .wn-annot-highlight {
@@ -516,73 +509,6 @@
       .wn-annot-delete svg {
         width: 16px;
         height: 16px;
-      }
-      .wn-annot-bmc {
-        position: sticky;
-        bottom: 16px;
-        display: flex;
-        justify-content: center;
-        padding: 12px 0 0;
-        margin-bottom: 8px;
-        z-index: 2;
-        pointer-events: none;
-        width: 100%;
-      }
-      .wn-annot-bmc-inner {
-        position: relative;
-        display: inline-flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 6px;
-        pointer-events: auto;
-      }
-      .wn-annot-bmc-label {
-        position: absolute;
-        bottom: calc(100% + 12px);
-        left: 50%;
-        text-align: center;
-        font-size: 11px;
-        color: #fff;
-        opacity: 0;
-        visibility: hidden;
-        transform: translateX(-50%) translateY(4px);
-        transition: all 0.16s ease;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 8px 14px;
-        border-radius: 8px;
-        background: rgba(35, 31, 74, 0.92);
-        box-shadow: 0 10px 24px rgba(73, 64, 157, 0.2);
-        font-weight: 600;
-        white-space: nowrap;
-        pointer-events: none;
-      }
-      .wn-annot-bmc > * {
-        pointer-events: auto;
-      }
-      .wn-annot-bmc #bmc-wbtn {
-        position: relative !important;
-        inset: auto !important;
-        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12) !important;
-        width: 56px !important;
-        height: 56px !important;
-        min-width: 56px !important;
-        min-height: 56px !important;
-        max-width: 56px !important;
-        max-height: 56px !important;
-        border-radius: 50% !important;
-        padding: 0 !important;
-      }
-      .wn-annot-bmc #bmc-wbtn img {
-        width: 28px !important;
-        height: 28px !important;
-      }
-      .wn-annot-bmc-inner:hover .wn-annot-bmc-label,
-      .wn-annot-bmc-inner:focus-within .wn-annot-bmc-label {
-        opacity: 1;
-        visibility: visible;
-        transform: translateX(-50%) translateY(0);
       }
       .wn-annot-footer {
         flex: 0 0 auto;
@@ -1141,7 +1067,10 @@
       };
       const onKey = (evt) => {
         if (evt.key === 'Escape') close(null);
-        if ((evt.metaKey || evt.ctrlKey) && evt.key === 'Enter') onOk();
+        if (evt.key === 'Enter' && !(evt.shiftKey || evt.altKey)) {
+          evt.preventDefault();
+          onOk();
+        }
       };
 
       okBtn.textContent = 'Save';
@@ -1249,9 +1178,7 @@
     window.addEventListener('resize', applyPageOffset);
     window.addEventListener('resize', positionPanel);
     window.addEventListener('resize', positionTip);
-    window.addEventListener('resize', positionBmcWidget);
-    window.addEventListener('resize', liftBmcLayers);
-    window.addEventListener('resize', centerBmcPopup);
+    // Buy me a coffee integrations removed
     window.addEventListener('scroll', refreshMarkers, { passive: true });
   }
 
@@ -1427,9 +1354,6 @@
     // Restore default flex layout when re-opening so the footer stays pinned
     state.panel.style.display = isHidden ? '' : 'none';
     updateToggleActive();
-    syncBmcVisibility();
-    positionBmcWidget();
-    liftBmcLayers();
   }
 
   function toggleAnnotatorVisibility() {
@@ -1505,7 +1429,6 @@
       p.style.right = `${barRect.width + inset}px`;
       p.style.left = `${inset}px`;
     }
-    positionBmcWidget();
   }
 
   function handleDragStart(evt) {
@@ -2087,259 +2010,6 @@
     return footer;
   }
 
-  function ensureBmcSlot() {
-    if (!state.panel) return null;
-    if (!state.bmcSlot) {
-      state.bmcSlot = document.createElement('div');
-      state.bmcSlot.className = 'wn-annot-bmc wn-annotator';
-      state.bmcInner = document.createElement('div');
-      state.bmcInner.className = 'wn-annot-bmc-inner wn-annotator';
-      state.bmcLabel = document.createElement('div');
-      state.bmcLabel.className = 'wn-annot-bmc-label wn-annotator';
-      state.bmcLabel.textContent = 'Support UxNote – buy me a coffee';
-      state.bmcInner.appendChild(state.bmcLabel);
-      state.bmcSlot.appendChild(state.bmcInner);
-    }
-    if (!state.bmcSlot.isConnected) {
-      state.panel.appendChild(state.bmcSlot);
-    }
-    if (state.bmcInner && state.bmcInner.parentElement !== state.bmcSlot) {
-      state.bmcSlot.appendChild(state.bmcInner);
-    }
-    if (state.bmcLabel && state.bmcLabel.parentElement !== state.bmcInner) {
-      state.bmcInner.insertBefore(state.bmcLabel, state.bmcInner.firstChild);
-    }
-    if (!state.bmcInjected) {
-      injectBmcScript();
-    }
-    bindBmcEvents();
-    return state.bmcSlot;
-  }
-
-  function injectBmcScript() {
-    if (!state.bmcSlot || state.bmcInjected) return;
-    state.bmcInjected = true;
-    const script = document.createElement('script');
-    script.setAttribute('data-name', 'BMC-Widget');
-    script.setAttribute('data-cfasync', 'false');
-    script.src = 'https://cdnjs.buymeacoffee.com/1.0.0/widget.prod.min.js';
-    script.dataset.id = 'ninefortyonestudio';
-    script.dataset.description = 'Support me on Buy me a coffee!';
-    script.dataset.message = 'Buy me a coffee';
-    script.dataset.color = '#6d56c7';
-    script.dataset.position = 'Right';
-    script.dataset.x_margin = '18';
-    script.dataset.y_margin = '18';
-    script.onload = () => {
-      triggerBmcInitIfReady();
-      positionBmcWidget();
-      liftBmcLayers();
-      syncBmcVisibility();
-    };
-    script.onerror = () => {
-      state.bmcInjected = false;
-    };
-    const target = state.bmcInner || state.bmcSlot;
-    target.appendChild(script);
-    setTimeout(() => {
-      positionBmcWidget();
-      liftBmcLayers();
-      bindBmcEvents();
-      syncBmcVisibility();
-    }, 1200);
-  }
-
-  function triggerBmcInitIfReady() {
-    if (document.readyState === 'loading') return;
-    try {
-      window.dispatchEvent(new Event('DOMContentLoaded'));
-    } catch (err) {
-      // ignore
-    }
-  }
-
-  function centerBmcPopup() {
-    if (!state.bmcOpen) return;
-    const iframe = document.getElementById('bmc-iframe');
-    if (!iframe) return;
-    const overlay = iframe.parentElement;
-    if (!overlay || !overlay.style) return;
-    const closeBtn = document.getElementById('bmc-close-btn');
-    // Freeze transitions while we reposition to avoid slide-in from bottom
-    overlay.style.transition = 'none';
-    iframe.style.transition = 'none';
-    if (closeBtn) closeBtn.style.transition = 'none';
-
-    overlay.style.width = '100%';
-    overlay.style.height = '100%';
-    overlay.style.top = '0';
-    overlay.style.left = '0';
-    overlay.style.right = '0';
-    overlay.style.bottom = '0';
-    overlay.style.position = 'fixed';
-    overlay.style.display = 'block';
-    overlay.style.pointerEvents = 'auto';
-    overlay.style.background = overlay.style.background || 'rgba(28,22,48,0)';
-    overlay.style.transition = overlay.style.transition || 'opacity 0.22s ease, background 0.22s ease';
-    overlay.style.opacity = overlay.style.opacity || '0';
-    iframe.style.position = 'fixed';
-    iframe.style.left = '50%';
-    iframe.style.top = '50%';
-    iframe.style.right = 'auto';
-    iframe.style.bottom = 'auto';
-    iframe.style.transform = 'translate(-50%, -50%)';
-    iframe.style.opacity = iframe.style.opacity || '0';
-    iframe.style.transition = iframe.style.transition || 'opacity 0.22s ease';
-    iframe.style.width = 'min(520px, calc(100vw - 48px))';
-    iframe.style.maxWidth = '520px';
-    iframe.style.height = 'min(700px, calc(100vh - 96px))';
-    iframe.style.maxHeight = '700px';
-    iframe.style.borderRadius = '14px';
-    iframe.style.backgroundColor = iframe.style.backgroundColor || '#fff';
-    iframe.style.boxShadow = '0 18px 48px rgba(20, 16, 56, 0.28)';
-    iframe.style.display = 'block';
-    iframe.style.pointerEvents = 'auto';
-    if (closeBtn) {
-      closeBtn.style.position = 'fixed';
-      closeBtn.style.top = '24px';
-      closeBtn.style.right = '24px';
-      closeBtn.style.left = 'auto';
-      closeBtn.style.bottom = 'auto';
-      closeBtn.style.visibility = 'visible';
-      closeBtn.style.display = 'flex';
-      closeBtn.style.opacity = '0';
-      closeBtn.style.pointerEvents = 'auto';
-    }
-
-    // Force reflow, then restore fade-only transitions
-    void iframe.offsetHeight;
-    overlay.style.transition = 'opacity 0.22s ease, background 0.22s ease';
-    iframe.style.transition = 'opacity 0.22s ease';
-    if (closeBtn) closeBtn.style.transition = 'opacity 0.22s ease';
-
-    requestAnimationFrame(() => {
-      overlay.style.opacity = '1';
-      overlay.style.background = 'rgba(28,22,48,0.36)';
-      iframe.style.opacity = '1';
-      iframe.style.transform = 'translate(-50%, -50%)';
-      if (closeBtn) closeBtn.style.opacity = '1';
-      liftBmcLayers();
-    });
-  }
-
-  function bindBmcEvents() {
-    const btn = document.getElementById('bmc-wbtn');
-    if (btn && !btn.dataset.wnBmcBound) {
-      btn.dataset.wnBmcBound = '1';
-      btn.addEventListener('click', () => {
-        state.bmcOpen = true;
-        setTimeout(() => {
-          centerBmcPopup();
-          liftBmcLayers();
-        }, 120);
-      });
-    }
-    const iframe = document.getElementById('bmc-iframe');
-    if (iframe && !iframe.dataset.wnBmcBound) {
-      iframe.dataset.wnBmcBound = '1';
-      iframe.addEventListener('load', () => {
-        centerBmcPopup();
-        liftBmcLayers();
-      });
-    }
-    const overlay = iframe && iframe.parentElement;
-    if (overlay && !overlay.dataset.wnBmcBound) {
-      overlay.dataset.wnBmcBound = '1';
-      overlay.addEventListener('click', () => {
-        state.bmcOpen = false;
-        fadeOutBmcPopup();
-      });
-    }
-    const closeBtn = document.getElementById('bmc-close-btn');
-    if (closeBtn && !closeBtn.dataset.wnBmcBound) {
-      closeBtn.dataset.wnBmcBound = '1';
-      closeBtn.addEventListener('click', () => {
-        state.bmcOpen = false;
-        fadeOutBmcPopup();
-      });
-    }
-  }
-
-  function liftBmcLayers() {
-    const btn = document.getElementById('bmc-wbtn');
-    const iframe = document.getElementById('bmc-iframe');
-    const closeBtn = document.getElementById('bmc-close-btn');
-    const overlay = iframe && iframe.parentElement;
-    [btn, iframe, closeBtn, overlay].forEach((el) => {
-      if (el) {
-        el.style.zIndex = BMC_Z_INDEX;
-      }
-    });
-  }
-
-  function fadeOutBmcPopup() {
-    const iframe = document.getElementById('bmc-iframe');
-    const overlay = iframe && iframe.parentElement;
-    const closeBtn = document.getElementById('bmc-close-btn');
-    state.bmcOpen = false;
-    if (overlay) {
-      overlay.style.transition = overlay.style.transition || 'opacity 0.2s ease, background 0.2s ease';
-      overlay.style.opacity = '0';
-      overlay.style.background = 'rgba(28,22,48,0)';
-      overlay.style.pointerEvents = 'none';
-    }
-    if (iframe) {
-      iframe.style.transition = iframe.style.transition || 'opacity 0.2s ease';
-      iframe.style.opacity = '0';
-      iframe.style.transform = 'translate(-50%, -50%)';
-      iframe.style.pointerEvents = 'none';
-    }
-    if (closeBtn) {
-      closeBtn.style.transition = closeBtn.style.transition || 'opacity 0.2s ease';
-      closeBtn.style.opacity = '0';
-      closeBtn.style.pointerEvents = 'none';
-    }
-    setTimeout(() => {
-      if (overlay) {
-        overlay.style.display = 'none';
-      }
-      if (iframe) {
-        iframe.style.display = 'none';
-      }
-      if (closeBtn) {
-        closeBtn.style.display = 'none';
-      }
-    }, 240);
-  }
-
-  function positionBmcWidget() {
-    const btn = document.getElementById('bmc-wbtn');
-    if (!btn || !state.panel || !state.bmcSlot) return;
-    const target = state.bmcInner || state.bmcSlot;
-    if (btn.parentElement !== target) {
-      target.appendChild(btn);
-    }
-    btn.style.position = 'relative';
-    btn.style.left = 'auto';
-    btn.style.right = 'auto';
-    btn.style.bottom = 'auto';
-    btn.style.top = 'auto';
-    liftBmcLayers();
-    bindBmcEvents();
-  }
-
-  function syncBmcVisibility() {
-    const btn = document.getElementById('bmc-wbtn');
-    const shouldHide = state.panel && state.panel.style.display === 'none';
-    if (state.bmcSlot) {
-      const hideSlot = shouldHide || !btn;
-      state.bmcSlot.style.display = hideSlot ? 'none' : '';
-      if (state.bmcInner) state.bmcInner.style.display = hideSlot ? 'none' : '';
-    }
-    if (!btn) return;
-    const hiddenPanel = state.panel && state.panel.style.display === 'none';
-    btn.style.display = hiddenPanel ? 'none' : 'flex';
-  }
 
   function renderList() {
     // Rebuild the panel list with filtering and numbering
@@ -2353,12 +2023,6 @@
       list.appendChild(empty);
       if (title) title.textContent = 'Page annotations (0)';
       const footer = ensureFooter();
-      const slot = ensureBmcSlot();
-      if (slot && footer && slot.nextSibling !== footer) {
-        state.panel.insertBefore(slot, footer);
-      }
-      positionBmcWidget();
-      syncBmcVisibility();
       return;
     }
     const filtered = state.annotations
@@ -2452,13 +2116,7 @@
       list.appendChild(item);
     });
 
-    const footer = ensureFooter();
-    const slot = ensureBmcSlot();
-    if (slot && footer && slot.nextSibling !== footer) {
-      state.panel.insertBefore(slot, footer);
-    }
-    positionBmcWidget();
-    syncBmcVisibility();
+    ensureFooter();
   }
 
   function deleteAnnotation(id) {
