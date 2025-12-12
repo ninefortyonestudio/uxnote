@@ -26,7 +26,6 @@
     highlightSpans: {},
     overlay: null,
     outlineBox: null,
-    regionBox: null,
     toolbar: null,
     panel: null,
     visibilityToggle: null,
@@ -127,7 +126,7 @@
         position: fixed;
         left: 12px;
         bottom: 18px;
-        --wn-btn-size: 46px;
+        --wn-btn-size: 55px;
         width: var(--wn-btn-size);
         height: var(--wn-btn-size);
         display: inline-flex;
@@ -687,13 +686,6 @@
         pointer-events: none;
         z-index: 2147482495;
       }
-      .wn-annot-region {
-        position: absolute;
-        border: 2px solid rgba(255, 172, 66, 0.9);
-        background: rgba(255, 172, 66, 0.18);
-        pointer-events: none;
-        z-index: 2147482100;
-      }
       .wn-annot-tip {
         position: fixed;
         left: 50%;
@@ -878,9 +870,7 @@
 
   const editButtons = [
       { action: 'mode', mode: 'text', tip: 'Highlight text', icon: iconPen() },
-      { action: 'mode', mode: 'element', tip: 'Annotate an element', icon: iconTarget() },
-      // Region tool temporarily hidden; keep code for future reactivation
-      // { action: 'mode', mode: 'region', tip: 'Free area', icon: iconRect() }
+      { action: 'mode', mode: 'element', tip: 'Annotate an element', icon: iconTarget() }
     ];
     const exportButtons = [
       { action: 'export', tip: 'Export JSON', icon: iconDownload() },
@@ -1193,12 +1183,10 @@
     document.addEventListener('pointerup', handleTextSelection);
     document.addEventListener('mousemove', handleElementHover);
     document.addEventListener('click', handleElementClick, true);
-    document.addEventListener('pointerdown', handleRegionPointerStart, { capture: true, passive: false });
     window.addEventListener('resize', refreshMarkers);
     window.addEventListener('resize', applyPageOffset);
     window.addEventListener('resize', positionPanel);
     window.addEventListener('resize', positionTip);
-    // Buy me a coffee integrations removed
     window.addEventListener('scroll', refreshMarkers, { passive: true });
   }
 
@@ -1230,7 +1218,6 @@
       updateToolbarActive();
       hideTip();
       if (!keepOutline) hideOutline();
-      clearRegionBox();
       return;
     }
     state.mode = nextMode;
@@ -1238,9 +1225,6 @@
     showTipForMode(nextMode);
     if (nextMode !== 'element') {
       hideOutline();
-    }
-    if (nextMode !== 'region') {
-      clearRegionBox();
     }
   }
 
@@ -1262,8 +1246,6 @@
       text = 'Select text then release to add a note.';
     } else if (mode === 'element') {
       text = 'Hover an element, click to annotate.';
-    } else if (mode === 'region') {
-      text = 'Click-drag to draw an annotated area.';
     }
     if (!text) return hideTip();
     state.tip.textContent = text;
@@ -1315,7 +1297,8 @@
   function loadAnnotations() {
     try {
       const stored = localStorage.getItem(storageKey);
-      state.annotations = stored ? JSON.parse(stored) : [];
+      const parsed = stored ? JSON.parse(stored) : [];
+      state.annotations = (parsed || []).filter((ann) => ann.type !== 'region');
       // Backward compatibility: add pageKey if missing
       state.annotations.forEach((ann) => {
         if (!ann.pageKey) {
@@ -1387,7 +1370,6 @@
       setMode(null);
       hideTip();
       hideOutline();
-      clearRegionBox();
     }
     syncVisibilityButton();
     applyPageOffset();
@@ -1613,86 +1595,7 @@
     setMode(null, { keepOutline: true });
   }
 
-  function handleRegionPointerStart(evt) {
-    // Draw a free area (pointer/touch drag) then create an annotation
-    if (state.mode !== 'region') return;
-    if (isWithinAnnotator(evt.target)) return;
-    if (evt.pointerType === 'mouse' && evt.button !== 0) return;
-    evt.preventDefault();
-    evt.stopPropagation();
-    const startX = evt.pageX;
-    const startY = evt.pageY;
-    const pointerId = evt.pointerId;
-    const box = document.createElement('div');
-    box.className = 'wn-annot-region wn-annotator';
-    document.body.appendChild(box);
-    state.regionBox = box;
-
-    const move = (moveEvt) => {
-      if (moveEvt.pointerId !== pointerId) return;
-      const x = Math.min(startX, moveEvt.pageX);
-      const y = Math.min(startY, moveEvt.pageY);
-      const w = Math.abs(moveEvt.pageX - startX);
-      const h = Math.abs(moveEvt.pageY - startY);
-      box.style.left = `${x}px`;
-      box.style.top = `${y}px`;
-      box.style.width = `${w}px`;
-      box.style.height = `${h}px`;
-    };
-
-    const up = async (upEvt) => {
-      if (upEvt.pointerId !== pointerId) return;
-      document.removeEventListener('pointermove', move, true);
-      document.removeEventListener('pointerup', up, true);
-      const rect = box.getBoundingClientRect();
-      if (rect.width < 5 || rect.height < 5) {
-        clearRegionBox();
-        return;
-      }
-      const res = await awaitComment('Comment for this area?');
-      if (!res) {
-        clearRegionBox();
-        return;
-      }
-      const { comment, priority } = res;
-      const xAbs = rect.x + window.scrollX;
-      const yAbs = rect.y + window.scrollY;
-      const id = generateId();
-      const annotation = {
-        id,
-        type: 'region',
-        target: {
-          rect: {
-            x: xAbs,
-            y: yAbs,
-            w: rect.width,
-            h: rect.height
-          }
-        },
-        comment: comment.trim(),
-        priority: priority || 'medium',
-        snippet: 'Free area',
-        pageUrl: window.location.href,
-        pageKey: normalizePageKey(window.location.href),
-        createdAt: Date.now()
-      };
-      state.annotations.push(annotation);
-      saveAnnotations();
-      addMarkerForAnnotation(annotation);
-      renderList();
-      setMode(null);
-    };
-
-    document.addEventListener('pointermove', move, true);
-    document.addEventListener('pointerup', up, true);
-  }
-
-  function clearRegionBox() {
-    if (state.regionBox && state.regionBox.parentNode) {
-      state.regionBox.parentNode.removeChild(state.regionBox);
-    }
-    state.regionBox = null;
-  }
+  // Region tool removed
 
   function unwrapHighlightSpan(span) {
     const parent = span && span.parentNode;
@@ -1715,7 +1618,6 @@
       state.markerLayer.innerHTML = '';
     }
     state.markers = {};
-    document.querySelectorAll('.wn-annot-region.wn-annotator').forEach((el) => el.remove());
     Object.values(state.elementOutlines || {}).forEach((outline) => {
       if (outline && outline.parentNode) outline.parentNode.removeChild(outline);
     });
@@ -1739,11 +1641,6 @@
     if (highlight) {
       unwrapHighlightSpan(highlight);
       delete state.highlightSpans[id];
-    }
-
-    const region = document.querySelector(`.wn-annot-region.wn-annotator[data-wn-annot-id="${id}"]`);
-    if (region && region.parentNode) {
-      region.parentNode.removeChild(region);
     }
   }
 
@@ -1844,8 +1741,6 @@
       addMarkerForAnnotation(annotation, span);
     } else if (annotation.type === 'element') {
       addMarkerForAnnotation(annotation);
-    } else if (annotation.type === 'region') {
-      addMarkerForAnnotation(annotation);
     }
   }
 
@@ -1870,9 +1765,6 @@
     const existingMarker = state.markers[annotation.id];
     if (existingMarker && existingMarker.el && existingMarker.el.parentNode) {
       existingMarker.el.parentNode.removeChild(existingMarker.el);
-    }
-    if (annotation.type === 'region') {
-      ensureRegionRect(annotation);
     }
     const marker = document.createElement('div');
     marker.className = 'wn-annot-marker wn-annotator';
@@ -1905,32 +1797,7 @@
       const r = el.getBoundingClientRect();
       return { x: r.x, y: r.y, w: r.width, h: r.height };
     }
-    if (annotation.type === 'region') {
-      const rect = normalizeRegionRect(annotation.target.rect);
-      return {
-        x: rect.x - window.scrollX,
-        y: rect.y - window.scrollY,
-        w: rect.w,
-        h: rect.h
-      };
-    }
     return null;
-  }
-
-  function ensureRegionRect(annotation) {
-    const rect = normalizeRegionRect(annotation.target.rect);
-    const existing = document.querySelector(`.wn-annot-region.wn-annotator[data-wn-annot-id="${annotation.id}"]`);
-    if (existing && existing.parentNode) {
-      existing.parentNode.removeChild(existing);
-    }
-    const box = document.createElement('div');
-    box.className = 'wn-annot-region wn-annotator';
-    box.dataset.wnAnnotId = annotation.id;
-    box.style.left = `${rect.x}px`;
-    box.style.top = `${rect.y}px`;
-    box.style.width = `${rect.w}px`;
-    box.style.height = `${rect.h}px`;
-    document.body.appendChild(box);
   }
 
   function ensureElementOutline(annotation) {
@@ -2000,9 +1867,6 @@
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         flash(el);
       }
-    } else if (ann.type === 'region') {
-      const r = normalizeRegionRect(ann.target.rect);
-      window.scrollTo({ top: r.y - 40, left: r.x, behavior: 'smooth' });
     }
   }
 
@@ -2373,30 +2237,6 @@
     } catch (err) {
       return `${window.location.origin}${window.location.pathname}`;
     }
-  }
-
-  function normalizeRegionRect(rect) {
-    if (!rect) return { x: 0, y: 0, w: 0, h: 0 };
-    const hasRatios =
-      rect.xFrac != null && rect.yFrac != null && rect.wFrac != null && rect.hFrac != null;
-    if (hasRatios) {
-      const docW =
-        document.documentElement.scrollWidth || window.innerWidth || rect.docW || rect.w || 1;
-      const docH =
-        document.documentElement.scrollHeight || window.innerHeight || rect.docH || rect.h || 1;
-      return {
-        x: rect.xFrac * docW,
-        y: rect.yFrac * docH,
-        w: rect.wFrac * docW,
-        h: rect.hFrac * docH
-      };
-    }
-    return {
-      x: rect.x || 0,
-      y: rect.y || 0,
-      w: rect.w || 0,
-      h: rect.h || 0
-    };
   }
 
   function focusPendingAnnotation() {
