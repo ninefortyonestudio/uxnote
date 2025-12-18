@@ -12,10 +12,21 @@
   const scriptBase = scriptSrc ? scriptSrc.split('/').slice(0, -1).join('/') : '';
   const iconBase = (script && script.dataset.icons) || `${scriptBase}/ressources`;
   const siteKey = `${location.protocol}//${location.host}`;
+  const mailToDefault = (script && (script.dataset.mailto || script.dataset.email || script.dataset.to)) || '';
+  const startHiddenAttr =
+    script &&
+    (script.dataset.hiddentoolbydefault ||
+      script.dataset.hidden ||
+      script.dataset.collapsed ||
+      script.dataset.startHidden ||
+      '');
   let position = (script && script.dataset.position) || 'bottom';
   const positionStorageKey = 'wn-toolbar-pos';
   const dockMode = (script && (script.dataset.dock || script.dataset.layout)) || '';
   const storageKey = `uxnote:site:${siteKey}`;
+  const annotatorNameStorageKey = `uxnote:annotator:${siteKey}`;
+  const annotatorNamesStorageKey = `uxnote:annotators:${siteKey}`;
+  const visibilityStorageKey = `uxnote:hidden:${siteKey}`;
   const pendingFocusKey = `uxnote:pending:${siteKey}`;
   const analyticsSrc = 'https://cloud.umami.is/script.js';
   const analyticsWebsiteId = '9ba5fe24-9047-43b9-bdc6-c4113d1cf0a5';
@@ -24,6 +35,8 @@
   const state = {
     mode: null,
     annotations: [],
+    annotatorName: '',
+    annotatorNames: [],
     markers: {},
     highlightSpans: {},
     outlineBox: null,
@@ -37,6 +50,7 @@
     customPosition: false,
     filters: {
       priority: 'all',
+      author: 'all',
       query: ''
     },
     hidden: false
@@ -46,11 +60,17 @@
   function init() {
     const savedPos = loadSavedPosition();
     if (savedPos) position = savedPos;
+    const savedHidden = loadHiddenState();
+    state.hidden = savedHidden !== null ? savedHidden : parseBoolAttr(startHiddenAttr, false);
+    state.annotatorName = loadAnnotatorName();
+    state.annotatorNames = loadAnnotatorNames();
     injectAnalytics();
     captureBasePadding();
     injectStyles();
     createShell();
+    setAnnotatorVisibility(state.hidden);
     loadAnnotations();
+    refreshKnownAnnotatorNames();
     restoreAnnotations();
     focusPendingAnnotation();
     bindGlobalHandlers();
@@ -454,6 +474,8 @@
       .wn-annot-list {
         flex: 1 1 auto;
         overflow: auto;
+        padding-top: 8px;
+        padding-bottom: 4px;
       }
       .wn-annot-item {
         background: #ffffff;
@@ -463,12 +485,18 @@
         margin-bottom: 12px;
         cursor: pointer;
         transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
-        box-shadow: 0 8px 18px rgba(73, 64, 157, 0.08);
+        box-shadow: 0 2px 8px rgba(73, 64, 157, 0.08);
       }
       .wn-annot-item:hover {
         border-color: rgba(109, 86, 199, 0.32);
         transform: translateY(-1px);
-        box-shadow: 0 12px 26px rgba(73, 64, 157, 0.15);
+        box-shadow: 0 4px 12px rgba(73, 64, 157, 0.12);
+      }
+      .wn-annot-item.is-focused {
+        border-color: rgba(48, 124, 246, 0.9);
+        box-shadow: 0 6px 16px rgba(48, 124, 246, 0.24);
+        background: linear-gradient(180deg, rgba(48, 124, 246, 0.08), rgba(48, 124, 246, 0.02));
+        transform: translateY(-1px);
       }
       .wn-annot-card-top {
         display: flex;
@@ -628,6 +656,12 @@
         margin-bottom: 8px;
         line-height: 1.45;
       }
+      .wn-annot-author {
+        font-size: 12px;
+        color: #5a5266;
+        font-weight: 700;
+        margin: 0 0 8px;
+      }
       .wn-annot-snippet {
         font-size: 12px;
         color: #5a5266;
@@ -659,6 +693,7 @@
         box-shadow: 0 0 0 1px rgba(0,0,0,0.15);
         padding: 0 2px;
         border-radius: 3px;
+        cursor: pointer;
       }
       .wn-annot-marker-layer {
         position: fixed;
@@ -755,6 +790,25 @@
         line-height: 1.6;
         color: #3f3852;
       }
+      .wn-annot-name-row {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .wn-annot-name-row label {
+        font-size: 13px;
+        color: #4b4557;
+        font-weight: 600;
+      }
+      .wn-annot-name-inputs {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .wn-annot-name-select {
+        min-width: 140px;
+      }
       .wn-annot-modal textarea {
         width: 100%;
         min-height: 90px;
@@ -768,7 +822,22 @@
         outline: none;
         box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
       }
+      .wn-annot-modal input[type="text"] {
+        width: 100%;
+        border-radius: 12px;
+        border: 1px solid rgba(109, 86, 199, 0.22);
+        background: #fff;
+        padding: 10px 12px;
+        font-size: 14px;
+        color: #342d43;
+        outline: none;
+        box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+      }
       .wn-annot-modal textarea:focus {
+        border-color: rgba(109, 86, 199, 0.55);
+        box-shadow: 0 0 0 3px rgba(109, 86, 199, 0.15);
+      }
+      .wn-annot-modal input[type="text"]:focus {
         border-color: rgba(109, 86, 199, 0.55);
         box-shadow: 0 0 0 3px rgba(109, 86, 199, 0.15);
       }
@@ -935,6 +1004,10 @@
             <option value="medium">Medium</option>
             <option value="low">Low</option>
           </select>
+          <label class="wn-annot-filter-label wn-annotator" for="wn-filter-author">Annotator</label>
+          <select id="wn-filter-author" class="wn-annotator">
+            <option value="all">All</option>
+          </select>
           <input id="wn-filter-search" class="wn-annotator" type="search" placeholder="Keyword search" />
         </div>
       </div>
@@ -1006,6 +1079,24 @@
 
     const title = document.createElement('h4');
     title.textContent = 'Add a comment';
+
+    const nameRow = document.createElement('div');
+    nameRow.className = 'wn-annot-name-row wn-annotator';
+    const nameLabel = document.createElement('label');
+    nameLabel.textContent = 'Annotator';
+    const nameInputs = document.createElement('div');
+    nameInputs.className = 'wn-annot-name-inputs wn-annotator';
+    const nameSelect = document.createElement('select');
+    nameSelect.className = 'wn-annot-name-select wn-annotator';
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.className = 'wn-annotator';
+    nameInput.placeholder = 'Your name';
+    nameInputs.appendChild(nameSelect);
+    nameInputs.appendChild(nameInput);
+    nameRow.appendChild(nameLabel);
+    nameRow.appendChild(nameInputs);
+
     const textarea = document.createElement('textarea');
     textarea.className = 'wn-annotator';
     textarea.placeholder = 'Your comment...';
@@ -1045,20 +1136,31 @@
     actions.appendChild(cancelBtn);
     actions.appendChild(okBtn);
     modal.appendChild(title);
+    modal.appendChild(nameRow);
     modal.appendChild(textarea);
     modal.appendChild(prioWrapper);
     modal.appendChild(actions);
     backdrop.appendChild(modal);
     document.body.appendChild(backdrop);
 
-    state.commentModal = { backdrop, modal, textarea, title, okBtn, cancelBtn, prioButtons };
+    state.commentModal = {
+      backdrop,
+      modal,
+      textarea,
+      title,
+      okBtn,
+      cancelBtn,
+      prioButtons,
+      nameSelect,
+      nameInput
+    };
     return state.commentModal;
   }
 
-  function askForComment(label, defaultValue = '', defaultPriority = 'medium') {
+  function askForComment(label, defaultValue = '', defaultPriority = 'medium', defaultAuthor = '') {
     return new Promise((resolve) => {
       const modalState = ensureCommentModal();
-      const { backdrop, textarea, title, okBtn, cancelBtn, prioButtons } = modalState;
+      const { backdrop, textarea, title, okBtn, cancelBtn, prioButtons, nameSelect, nameInput } = modalState;
       title.textContent = label || 'Add a comment';
       textarea.value = defaultValue || '';
       textarea.placeholder = 'Your comment...';
@@ -1069,6 +1171,46 @@
       };
       const prioHandlers = prioButtons.map((b) => (evt) => onPrioClick(b));
       prioButtons.forEach((b, idx) => b.addEventListener('click', prioHandlers[idx]));
+
+      const names = state.annotatorNames || [];
+      const defaultName = defaultAuthor || state.annotatorName || names[0] || '';
+      nameSelect.innerHTML = '';
+      const useSelect = names.length >= 2;
+      if (useSelect) {
+        names.forEach((n) => {
+          const opt = document.createElement('option');
+          opt.value = n;
+          opt.textContent = n;
+          nameSelect.appendChild(opt);
+        });
+        const newOpt = document.createElement('option');
+        newOpt.value = '__new';
+        newOpt.textContent = 'New name...';
+        nameSelect.appendChild(newOpt);
+        nameSelect.style.display = '';
+      } else {
+        nameSelect.style.display = 'none';
+      }
+      const selectDefault = useSelect && names.includes(defaultName) ? defaultName : useSelect ? names[names.length - 1] : '';
+      if (useSelect) {
+        nameSelect.value = selectDefault || '__new';
+      }
+      nameInput.value = defaultName || '';
+      nameInput.disabled = useSelect && nameSelect.value !== '__new';
+      nameInput.placeholder = useSelect ? 'New name' : 'Your name';
+
+      const onSelectChange = () => {
+        const isNew = nameSelect.value === '__new';
+        nameInput.disabled = !isNew;
+        if (!isNew) {
+          nameInput.value = nameSelect.value;
+        } else {
+          nameInput.value = '';
+          nameInput.focus();
+        }
+      };
+      if (useSelect) nameSelect.addEventListener('change', onSelectChange);
+
       backdrop.classList.add('show');
       textarea.focus();
       textarea.select();
@@ -1080,12 +1222,22 @@
         backdrop.removeEventListener('click', onBackdrop);
         document.removeEventListener('keydown', onKey);
         prioButtons.forEach((b, idx) => b.removeEventListener('click', prioHandlers[idx]));
+        if (useSelect) nameSelect.removeEventListener('change', onSelectChange);
         resolve(val);
       };
-      const onOk = () => {
+      const onOk = async () => {
         const selected = prioButtons.find((b) => b.classList.contains('active'));
         const priority = selected ? selected.getAttribute('data-priority') : defaultPriority;
-        close({ comment: textarea.value.trim(), priority });
+        let author = nameInput.value.trim();
+        if (useSelect && nameSelect.value !== '__new') {
+          author = nameSelect.value;
+        }
+        if (!author) {
+          await alertDialog('Please enter your name.', 'Name required');
+          return;
+        }
+        recordAnnotatorName(author);
+        close({ comment: textarea.value.trim(), priority, author });
       };
       const onCancel = () => close(null);
       const onBackdrop = (evt) => {
@@ -1206,24 +1358,68 @@
     window.addEventListener('scroll', refreshMarkers, { passive: true });
   }
 
+  function getAuthorLabel(value) {
+    return value === '__unknown' ? 'Unknown' : value;
+  }
+
+  function updateAuthorFilterOptions() {
+    if (!state.panel) return;
+    const select = state.panel.querySelector('#wn-filter-author');
+    if (!select) return;
+    const current = state.filters.author || 'all';
+    const authors = Array.from(
+      new Set(
+        state.annotations.map((ann) => {
+          const name = (ann.author || '').trim();
+          return name || '__unknown';
+        })
+      )
+    ).filter((v) => v);
+
+    select.innerHTML = '';
+    const allOption = document.createElement('option');
+    allOption.value = 'all';
+    allOption.textContent = 'All';
+    select.appendChild(allOption);
+
+    authors
+      .sort((a, b) => getAuthorLabel(a).localeCompare(getAuthorLabel(b)))
+      .forEach((value) => {
+        const opt = document.createElement('option');
+        opt.value = value;
+        opt.textContent = getAuthorLabel(value);
+        select.appendChild(opt);
+      });
+
+    const values = ['all', ...authors];
+    select.value = values.includes(current) ? current : 'all';
+    state.filters.author = select.value;
+  }
+
   function initFilters() {
-    // Install filters (priority + search) and re-render on change
+    // Install filters (priority + author + search) and re-render on change
     if (!state.panel) return;
     const prioritySelect = state.panel.querySelector('#wn-filter-priority');
+    const authorSelect = state.panel.querySelector('#wn-filter-author');
     const searchInput = state.panel.querySelector('#wn-filter-search');
-    if (!prioritySelect || !searchInput) return;
+    if (!prioritySelect || !authorSelect || !searchInput) return;
 
     prioritySelect.value = state.filters.priority;
+    authorSelect.value = state.filters.author;
     searchInput.value = state.filters.query;
 
     const trigger = () => {
       state.filters.priority = prioritySelect.value;
+      state.filters.author = authorSelect.value;
       state.filters.query = searchInput.value.trim().toLowerCase();
       renderList();
     };
 
     prioritySelect.addEventListener('change', trigger);
+    authorSelect.addEventListener('change', trigger);
     searchInput.addEventListener('input', trigger);
+
+    updateAuthorFilterOptions();
   }
 
   function setMode(nextMode, options = {}) {
@@ -1285,6 +1481,107 @@
     return null;
   }
 
+  function loadHiddenState() {
+    try {
+      const saved = localStorage.getItem(visibilityStorageKey);
+      if (saved === null || saved === undefined) return null;
+      return saved === 'true';
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function saveHiddenState(hidden) {
+    try {
+      localStorage.setItem(visibilityStorageKey, hidden ? 'true' : 'false');
+    } catch (err) {
+      // ignore
+    }
+  }
+
+  function parseBoolAttr(val, fallback = false) {
+    if (val === undefined || val === null || val === '') return fallback;
+    const v = String(val).toLowerCase();
+    if (v === 'true' || v === '1' || v === 'yes' || v === 'on') return true;
+    if (v === 'false' || v === '0' || v === 'no' || v === 'off') return false;
+    return fallback;
+  }
+
+  function loadAnnotatorName() {
+    try {
+      return localStorage.getItem(annotatorNameStorageKey) || '';
+    } catch (err) {
+      return '';
+    }
+  }
+
+  function saveAnnotatorName(name) {
+    try {
+      localStorage.setItem(annotatorNameStorageKey, name);
+    } catch (err) {
+      // ignore storage errors
+    }
+  }
+
+  function loadAnnotatorNames() {
+    try {
+      const stored = localStorage.getItem(annotatorNamesStorageKey);
+      const parsed = stored ? JSON.parse(stored) : [];
+      if (Array.isArray(parsed)) {
+        return parsed.filter((n) => typeof n === 'string' && n.trim()).map((n) => n.trim());
+      }
+      return [];
+    } catch (err) {
+      return [];
+    }
+  }
+
+  function saveAnnotatorNames(names) {
+    try {
+      localStorage.setItem(annotatorNamesStorageKey, JSON.stringify(names || []));
+    } catch (err) {
+      // ignore storage errors
+    }
+  }
+
+  function recordAnnotatorName(name) {
+    const trimmed = (name || '').trim();
+    if (!trimmed) return;
+    state.annotatorName = trimmed;
+    const next = [trimmed, ...state.annotatorNames.filter((n) => n !== trimmed)];
+    state.annotatorNames = next;
+    saveAnnotatorName(trimmed);
+    saveAnnotatorNames(next);
+  }
+
+  function refreshKnownAnnotatorNames() {
+    const existing = Array.from(
+      new Set(
+        (state.annotations || [])
+          .map((a) => (a.author || '').trim())
+          .filter(Boolean)
+      )
+    );
+    const merged = Array.from(new Set([...(state.annotatorNames || []), ...existing]));
+    state.annotatorNames = merged;
+    if (!state.annotatorName) {
+      state.annotatorName = loadAnnotatorName() || merged[0] || '';
+    }
+  }
+
+  function applyAnnotatorNameToAnnotations(name, options = {}) {
+    if (!name) return false;
+    const force = options.force || false;
+    let changed = false;
+    state.annotations.forEach((ann) => {
+      if (!force && ann.author) return;
+      if (ann.author !== name) changed = true;
+      ann.author = name;
+    });
+    if (changed) saveAnnotations();
+    return changed;
+  }
+
   function positionTip() {
     if (!state.tip || !state.toolbar) return;
     const barRect = state.toolbar.getBoundingClientRect();
@@ -1336,7 +1633,7 @@
     }
   }
 
-  function onToolbarClick(evt) {
+  async function onToolbarClick(evt) {
     const btn = evt.target.closest('button');
     if (!btn || !btn.classList.contains('wn-annotator')) return;
     const action = btn.getAttribute('data-action');
@@ -1347,7 +1644,7 @@
       return;
     }
     if (action === 'export') {
-      exportAnnotations();
+      await exportAnnotations();
       return;
     }
     if (action === 'import') {
@@ -1355,7 +1652,7 @@
       return;
     }
     if (action === 'email') {
-      emailAnnotations();
+      await emailAnnotations();
       return;
     }
     if (action === 'toggle-panel') {
@@ -1382,6 +1679,7 @@
 
   function setAnnotatorVisibility(hidden) {
     state.hidden = hidden;
+    saveHiddenState(hidden);
     document.body.classList.toggle('wn-annot-hidden', hidden);
     if (hidden) {
       setMode(null);
@@ -1533,7 +1831,7 @@
     if (!snippet) return;
     const res = await awaitComment('Comment for this highlight?');
     if (!res) return;
-    const { comment, priority } = res;
+    const { comment, priority, author } = res;
     const id = generateId();
     const payload = serializeRange(range);
     wrapRange(range, id);
@@ -1543,6 +1841,7 @@
       type: 'text',
       target: payload,
       comment: comment.trim(),
+      author: author || state.annotatorName || '',
       priority: priority || 'medium',
       snippet: snippet.slice(0, 180),
       pageUrl: window.location.href,
@@ -1576,7 +1875,7 @@
     evt.stopPropagation();
     const res = await awaitComment('Comment for this element?');
     if (!res) return;
-    const { comment, priority } = res;
+    const { comment, priority, author } = res;
     const id = generateId();
     const targetXPath = getXPath(el);
     const rect = el.getBoundingClientRect();
@@ -1585,6 +1884,7 @@
       type: 'element',
       target: { xpath: targetXPath, tag: el.tagName.toLowerCase() },
       comment: comment.trim(),
+      author: author || state.annotatorName || '',
       priority: priority || 'medium',
       snippet: el.innerText ? el.innerText.trim().slice(0, 120) : el.tagName,
       pageUrl: window.location.href,
@@ -1611,12 +1911,20 @@
     parent.removeChild(span);
   }
 
+  function getHighlightSpans(id) {
+    const entry = state.highlightSpans[id];
+    if (!entry) return [];
+    return Array.isArray(entry) ? entry : [entry];
+  }
+
   function clearRenderedAnnotations() {
     // Clean highlights/rectangles/markers on page before reload
-    Object.values(state.highlightSpans || {}).forEach((span) => {
-      if (span && span.parentNode) {
-        unwrapHighlightSpan(span);
-      }
+    Object.keys(state.highlightSpans || {}).forEach((id) => {
+      getHighlightSpans(id).forEach((span) => {
+        if (span && span.parentNode) {
+          unwrapHighlightSpan(span);
+        }
+      });
     });
     state.highlightSpans = {};
     if (state.markerLayer) {
@@ -1641,12 +1949,14 @@
     }
     delete state.elementOutlines[id];
 
-    const highlight =
-      state.highlightSpans[id] || document.querySelector(`.wn-annot-highlight[data-wn-annot-id="${id}"]`);
-    if (highlight) {
-      unwrapHighlightSpan(highlight);
-      delete state.highlightSpans[id];
+    let highlightSpans = getHighlightSpans(id);
+    if (!highlightSpans.length) {
+      highlightSpans = Array.from(document.querySelectorAll(`.wn-annot-highlight[data-wn-annot-id="${id}"]`));
     }
+    highlightSpans.forEach((span) => {
+      if (span) unwrapHighlightSpan(span);
+    });
+    delete state.highlightSpans[id];
   }
 
   function renumberMarkers() {
@@ -1689,13 +1999,89 @@
   }
 
   function wrapRange(range, id) {
+    let spans = [];
+    const workingRange = range.cloneRange();
+    const textNodes = getTextNodesInRange(workingRange);
+    textNodes.forEach((node) => {
+      const span = wrapTextNodePortion(
+        node,
+        {
+          start: node === workingRange.startContainer ? workingRange.startOffset : 0,
+          end: node === workingRange.endContainer ? workingRange.endOffset : node.length
+        },
+        id
+      );
+      if (span) spans.push(span);
+    });
+    // Fallback: if no spans were created, wrap the whole range in one span
+    if (!spans.length) {
+      const span = document.createElement('span');
+      span.className = 'wn-annot-highlight';
+      span.dataset.wnAnnotId = id;
+      span.addEventListener('click', (evt) => {
+        evt.stopPropagation();
+        focusAnnotation(id);
+      });
+      const contents = workingRange.extractContents();
+      span.appendChild(contents);
+      workingRange.insertNode(span);
+      spans = [span];
+    }
+    state.highlightSpans[id] = spans;
+    return spans[0];
+  }
+
+  function rangeIntersectsNode(range, node) {
+    const nodeRange = document.createRange();
+    nodeRange.selectNodeContents(node);
+    return (
+      range.compareBoundaryPoints(Range.END_TO_START, nodeRange) > 0 &&
+      range.compareBoundaryPoints(Range.START_TO_END, nodeRange) < 0
+    );
+  }
+
+  function getTextNodesInRange(range) {
+    const nodes = [];
+    const walker = document.createTreeWalker(range.commonAncestorContainer, NodeFilter.SHOW_TEXT, null);
+    let node;
+    while ((node = walker.nextNode())) {
+      if (!node.nodeValue || !node.nodeValue.trim()) continue;
+      try {
+        if (range.intersectsNode) {
+          if (!range.intersectsNode(node)) continue;
+        } else if (!rangeIntersectsNode(range, node)) {
+          continue;
+        }
+      } catch (err) {
+        if (!rangeIntersectsNode(range, node)) continue;
+      }
+      nodes.push(node);
+    }
+    return nodes;
+  }
+
+  function wrapTextNodePortion(node, offsets, id) {
+    if (!node || !node.parentNode) return null;
+    const { start, end } = offsets;
+    let textNode = node;
+    let localEnd = end;
+    if (start > 0) {
+      textNode = textNode.splitText(start);
+      localEnd = end - start;
+    }
+    if (localEnd < textNode.length) {
+      textNode.splitText(localEnd);
+    }
+    if (!textNode.parentNode) return null;
     const span = document.createElement('span');
     span.className = 'wn-annot-highlight';
     span.dataset.wnAnnotId = id;
-    const contents = range.extractContents();
-    span.appendChild(contents);
-    range.insertNode(span);
-    state.highlightSpans[id] = span;
+    span.addEventListener('click', (evt) => {
+      evt.stopPropagation();
+      focusAnnotation(id);
+    });
+    textNode.parentNode.insertBefore(span, textNode);
+    span.appendChild(textNode);
     return span;
   }
 
@@ -1788,10 +2174,8 @@
 
   function getViewportRect(annotation, targetNode) {
     if (annotation.type === 'text') {
-      const span =
-        targetNode ||
-        state.highlightSpans[annotation.id] ||
-        document.querySelector(`[data-wn-annot-id="${annotation.id}"]`);
+      const spans = targetNode ? [targetNode] : getHighlightSpans(annotation.id);
+      const span = spans[0] || document.querySelector(`[data-wn-annot-id="${annotation.id}"]`);
       if (!span) return null;
       const r = span.getBoundingClientRect();
       return { x: r.x, y: r.y, w: r.width, h: r.height };
@@ -1845,10 +2229,33 @@
     });
   }
 
+  function ensurePanelVisible() {
+    if (!state.panel) return;
+    const isHidden = state.panel.style.display === 'none';
+    if (isHidden) {
+      state.panel.style.display = '';
+      updateToggleActive();
+    }
+  }
+
+  function focusListItem(id) {
+    if (!state.panel) return;
+    ensurePanelVisible();
+    const list = state.panel.querySelector('.wn-annot-list');
+    if (!list) return;
+    const items = list.querySelectorAll('.wn-annot-item');
+    items.forEach((el) => el.classList.remove('is-focused'));
+    const target = list.querySelector(`.wn-annot-item[data-id="${id}"]`);
+    if (!target) return;
+    target.classList.add('is-focused');
+    target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
   // Scroll/flash the target when selecting from the list or marker
   function focusAnnotation(id, allowNavigate = false, targetUrl, targetPageKey) {
     const ann = state.annotations.find((a) => a.id === id);
     if (!ann) return;
+    focusListItem(id);
     const samePage = (targetPageKey || ann.pageKey) === normalizePageKey(window.location.href);
     if (!samePage && allowNavigate) {
       try {
@@ -1860,9 +2267,10 @@
       return;
     }
     if (ann.type === 'text') {
-      const span =
-        state.highlightSpans[id] ||
-        document.querySelector(`[data-wn-annot-id="${id}"]`);
+      const spans =
+        getHighlightSpans(id) ||
+        Array.from(document.querySelectorAll(`[data-wn-annot-id="${id}"]`));
+      const span = spans[0];
       if (span) {
         span.scrollIntoView({ behavior: 'smooth', block: 'center' });
         flash(span);
@@ -1908,6 +2316,7 @@
     const list = state.panel.querySelector('.wn-annot-list');
       const title = state.panel.querySelector('h3');
       list.innerHTML = '';
+      updateAuthorFilterOptions();
       if (!state.annotations.length) {
         const empty = document.createElement('div');
         empty.className = 'wn-annot-empty';
@@ -1921,12 +2330,15 @@
       .slice()
       .sort((a, b) => a.createdAt - b.createdAt)
       .filter((ann) => {
-        const prioOk = state.filters.priority === 'all' || (ann.priority || 'medium') === state.filters.priority;
+    const prioOk = state.filters.priority === 'all' || (ann.priority || 'medium') === state.filters.priority;
         const q = state.filters.query;
-        const haystack = `${ann.comment || ''} ${ann.snippet || ''}`.toLowerCase();
+        const haystack = `${ann.comment || ''} ${ann.snippet || ''} ${ann.author || ''}`.toLowerCase();
         const searchOk = !q || haystack.includes(q);
-        return prioOk && searchOk;
-      });
+        const authorFilter = state.filters.author || 'all';
+        const authorValue = (ann.author || '').trim() || '__unknown';
+        const authorOk = authorFilter === 'all' || authorValue === authorFilter;
+    return prioOk && searchOk && authorOk;
+  });
     if (title) title.textContent = `Page annotations (${filtered.length})`;
     filtered.forEach((ann, idx) => {
       const item = document.createElement('div');
@@ -1982,6 +2394,11 @@
       comment.className = 'wn-annot-comment';
       comment.textContent = ann.comment || '—';
 
+      const author = document.createElement('div');
+      author.className = 'wn-annot-author';
+      const authorName = (ann.author || '').trim();
+      author.textContent = `Annotator: ${authorName || 'Unknown annotator'}`;
+
       const snippetWrap = document.createElement('div');
       snippetWrap.className = 'wn-annot-snippet';
       snippetWrap.textContent = ann.snippet || '(no text)';
@@ -2001,6 +2418,7 @@
 
       item.appendChild(top);
       item.appendChild(comment);
+      item.appendChild(author);
       item.appendChild(snippetWrap);
       item.appendChild(showMore);
       item.appendChild(meta);
@@ -2024,11 +2442,13 @@
   async function editAnnotation(id) {
     const ann = state.annotations.find((a) => a.id === id);
     if (!ann) return;
-    const res = await askForComment('Edit this annotation', ann.comment || '', ann.priority || 'medium');
+    const res = await askForComment('Edit this annotation', ann.comment || '', ann.priority || 'medium', ann.author || state.annotatorName || '');
     if (!res) return;
-    const { comment, priority } = res;
+    const { comment, priority, author } = res;
     ann.comment = comment.trim();
     ann.priority = priority || 'medium';
+    ann.author = author || ann.author || state.annotatorName || '';
+    recordAnnotatorName(ann.author);
     saveAnnotations();
     renderList();
   }
@@ -2069,7 +2489,10 @@
     const data = JSON.stringify(payload, null, 2);
     const subject = encodeURIComponent(buildFilename());
     const body = encodeURIComponent(data);
-    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+    const to = (mailToDefault || '').trim();
+    const toPart = to ? encodeURIComponent(to) : '';
+    const sep = toPart ? '?' : '?';
+    window.location.href = `mailto:${toPart}${sep}subject=${subject}&body=${body}`;
   }
 
   function generateId() {
@@ -2086,14 +2509,19 @@
         const parsed = JSON.parse(reader.result);
         const imported = Array.isArray(parsed) ? parsed : parsed.annotations;
         if (!Array.isArray(imported)) throw new Error('Invalid JSON format');
+        const fallbackAuthor = Array.isArray(parsed)
+          ? ''
+          : parsed.exportedBy || parsed.annotator || parsed.author || '';
         clearRenderedAnnotations();
         state.annotations = imported.map((ann) => ({
           ...ann,
           id: ann.id || generateId(),
           createdAt: ann.createdAt || Date.now(),
-          priority: ann.priority || 'medium'
+          priority: ann.priority || 'medium',
+          author: ann.author || fallbackAuthor || ''
         }));
         saveAnnotations();
+        refreshKnownAnnotatorNames();
         restoreAnnotations();
       } catch (err) {
         await alertDialog('Import failed: ' + err.message, 'Import error');

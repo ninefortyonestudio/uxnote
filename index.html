@@ -101,6 +101,18 @@
     <div class="code-block">
 &lt;script src="https://uxnote.ninefortyone.studio/uxnote-tool/uxnote.js"&gt;&lt;/script&gt;
     </div>
+    <p class="lead">Optional attributes on the script tag:</p>
+    <div class="code-block">
+&lt;script
+  src="https://uxnote.ninefortyone.studio/uxnote-tool/uxnote.js"
+  data-mailto="team@example.com"
+  data-hiddentoolbydefault="true"
+&gt;&lt;/script&gt;
+    </div>
+    <div class="steps install-steps">
+      <div class="step"><div class="num">•</div><h3>data-mailto</h3><p>Pre-fills the <code>mailto:</code> recipient when clicking “Send by email”.</p></div>
+      <div class="step"><div class="num">•</div><h3>data-hiddentoolbydefault</h3><p>Load the toolbar hidden on first view (<code>true</code>/<code>false</code>); visibility persists per site in local storage.</p></div>
+    </div>
     <div class="steps install-steps">
       <div class="step"><div class="num">1</div><h3>Inject</h3><p>Paste the snippet on each page (or via a global tag manager).</p></div>
       <div class="step"><div class="num">2</div><h3>Share</h3><p>Send the URL to your client (optionally add <code>?uxnote=1</code> to flag review mode).</p></div>
