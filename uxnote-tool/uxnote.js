@@ -441,6 +441,24 @@
       .wn-annot-filter-row input[type="search"] {
         width: 100%;
       }
+      .wn-annot-filter-clear {
+        border: 1px solid rgba(109, 86, 199, 0.25);
+        background: rgba(109, 86, 199, 0.08);
+        color: #5a5266;
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 12px;
+        line-height: 1;
+        padding: 0;
+      }
+      .wn-annot-filter-clear:hover {
+        background: rgba(109, 86, 199, 0.16);
+      }
       .wn-annot-filters select:focus,
       .wn-annot-filters input[type="search"]:focus {
         outline: none;
@@ -1287,12 +1305,14 @@
               <option value="medium">Medium</option>
               <option value="low">Low</option>
             </select>
+            <button class="wn-annot-filter-clear wn-annotator" type="button" data-filter-clear="priority" aria-label="Clear priority filter">✕</button>
           </div>
           <div class="wn-annot-filter-row wn-annotator">
             <label class="wn-annot-filter-label wn-annotator" for="wn-filter-author">Reviewer</label>
             <select id="wn-filter-author" class="wn-annotator">
               <option value="all">All</option>
             </select>
+            <button class="wn-annot-filter-clear wn-annotator" type="button" data-filter-clear="author" aria-label="Clear reviewer filter">✕</button>
           </div>
         </div>
       </div>
@@ -2203,6 +2223,20 @@
     return value === '__unknown' ? 'Unknown' : value;
   }
 
+  function updateFilterClearButtons() {
+    if (!state.panel) return;
+    const prioritySelect = state.panel.querySelector('#wn-filter-priority');
+    const authorSelect = state.panel.querySelector('#wn-filter-author');
+    const priorityClear = state.panel.querySelector('[data-filter-clear="priority"]');
+    const authorClear = state.panel.querySelector('[data-filter-clear="author"]');
+    if (priorityClear && prioritySelect) {
+      priorityClear.style.display = prioritySelect.value === 'all' ? 'none' : 'inline-flex';
+    }
+    if (authorClear && authorSelect) {
+      authorClear.style.display = authorSelect.value === 'all' ? 'none' : 'inline-flex';
+    }
+  }
+
   function updateAuthorFilterOptions() {
     if (!state.panel) return;
     const select = state.panel.querySelector('#wn-filter-author');
@@ -2235,6 +2269,7 @@
     const values = ['all', ...authors];
     select.value = values.includes(current) ? current : 'all';
     state.filters.author = select.value;
+    updateFilterClearButtons();
   }
 
   function initFilters() {
@@ -2243,6 +2278,8 @@
     const prioritySelect = state.panel.querySelector('#wn-filter-priority');
     const authorSelect = state.panel.querySelector('#wn-filter-author');
     const searchInput = state.panel.querySelector('#wn-filter-search');
+    const priorityClear = state.panel.querySelector('[data-filter-clear="priority"]');
+    const authorClear = state.panel.querySelector('[data-filter-clear="author"]');
     if (!prioritySelect || !authorSelect || !searchInput) return;
 
     prioritySelect.value = state.filters.priority;
@@ -2254,13 +2291,27 @@
       state.filters.author = authorSelect.value;
       state.filters.query = searchInput.value.trim().toLowerCase();
       renderList();
+      updateFilterClearButtons();
     };
 
     prioritySelect.addEventListener('change', trigger);
     authorSelect.addEventListener('change', trigger);
     searchInput.addEventListener('input', trigger);
+    if (priorityClear) {
+      priorityClear.addEventListener('click', () => {
+        prioritySelect.value = 'all';
+        trigger();
+      });
+    }
+    if (authorClear) {
+      authorClear.addEventListener('click', () => {
+        authorSelect.value = 'all';
+        trigger();
+      });
+    }
 
     updateAuthorFilterOptions();
+    updateFilterClearButtons();
   }
 
   function setMode(nextMode, options = {}) {
