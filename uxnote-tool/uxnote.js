@@ -59,6 +59,12 @@
     },
     hidden: false
   };
+  const mobileQuery = window.matchMedia ? window.matchMedia('(max-width: 640px)') : null;
+
+  function isMobileLayout() {
+    if (mobileQuery) return mobileQuery.matches;
+    return window.innerWidth <= 640;
+  }
 
   // Entry point: load config, build UI, restore data
   function init() {
@@ -240,25 +246,28 @@
       }
       @media (max-width: 640px) {
         .wn-annot-toolbar {
-          gap: 8px;
-          padding: 8px 10px;
+          gap: 6px;
+          padding: 6px 8px;
+          flex-wrap: nowrap;
+          max-width: calc(100vw - 16px);
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
         }
         .wn-annot-toolbar button {
-          --wn-btn-size: 40px;
+          --wn-btn-size: 36px;
         }
         .wn-annot-group {
-          gap: 8px;
+          gap: 6px;
         }
         .wn-annot-spacer {
-          flex-basis: 16px;
-          width: 16px;
+          display: none;
         }
         .wn-annot-visibility-btn {
           --wn-btn-size: 42px;
           left: 10px;
         }
-        .wn-annot-logo svg {
-          width: 90px;
+        .wn-annot-logo {
+          display: none;
         }
       }
       .wn-annot-toolbar button:hover {
@@ -648,7 +657,10 @@
         line-height: 1.4;
       }
       .wn-annot-meta-bottom {
-        display: block;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 2px;
         margin-left: auto;
         margin-top: 10px;
         width: 100%;
@@ -684,19 +696,6 @@
         margin-bottom: 8px;
       }
       .wn-annot-comment {
-        font-size: 14px;
-        font-weight: 700;
-        color: #2f2740;
-        margin-bottom: 8px;
-        line-height: 1.45;
-      }
-      .wn-annot-author {
-        font-size: 12px;
-        color: #5a5266;
-        font-weight: 700;
-        margin: 0 0 8px;
-      }
-      .wn-annot-snippet {
         font-size: 12px;
         color: #5a5266;
         background: rgba(109, 86, 199, 0.06);
@@ -704,12 +703,14 @@
         border-radius: 12px;
         padding: 8px 10px;
         display: -webkit-box;
-        -webkit-line-clamp: 1;
+        -webkit-line-clamp: 5;
         -webkit-box-orient: vertical;
         overflow: hidden;
+        line-height: 1.5;
+        margin-bottom: 0;
         transition: max-height 0.2s ease;
       }
-      .wn-annot-snippet.expanded {
+      .wn-annot-comment.expanded {
         -webkit-line-clamp: unset;
       }
       .wn-annot-showmore {
@@ -1324,6 +1325,9 @@
     }
     document.body.appendChild(panel);
     state.panel = panel;
+    if (isMobileLayout()) {
+      panel.style.display = 'none';
+    }
     const deleteAllBtn = panel.querySelector('.wn-annot-delete-all');
     if (deleteAllBtn) {
       deleteAllBtn.addEventListener('click', async (evt) => {
@@ -2648,6 +2652,18 @@
     const inset = 18;
     const barRect = state.toolbar.getBoundingClientRect();
 
+    if (isMobileLayout()) {
+      p.style.width = '100vw';
+      p.style.maxHeight = '100vh';
+      p.style.height = '100vh';
+      p.style.left = '0';
+      p.style.right = '0';
+      p.style.top = '0';
+      p.style.bottom = '0';
+      p.style.borderRadius = '0';
+      return;
+    }
+
     p.style.width = `min(360px, calc(100vw - ${inset * 2}px))`;
     p.style.maxHeight = `calc(100vh - ${inset * 2}px)`;
     p.style.left = 'auto';
@@ -2655,6 +2671,7 @@
     p.style.top = `${inset}px`;
     p.style.bottom = `${inset}px`;
     p.style.height = '';
+    p.style.borderRadius = '';
 
     if (position === 'left') {
       p.style.left = `${barRect.width + inset}px`;
@@ -3237,7 +3254,7 @@
       footer = document.createElement('div');
       footer.className = 'wn-annot-footer wn-annotator';
       const link = document.createElement('a');
-      link.href = 'https://ninefortyone.studio';
+      link.href = 'https://uxnote.ninefortyone.studio';
       link.target = '_blank';
       link.rel = 'noreferrer noopener';
       link.textContent = '© UxNote – by NineFortyOne.Studio';
@@ -3297,10 +3314,8 @@
       prioChip.innerHTML = `<span class="dot"></span><span>${priorityLabel}</span>`;
       topLeft.appendChild(number);
       topLeft.appendChild(prioChip);
-      const meta = document.createElement('div');
-      meta.className = 'wn-annot-meta wn-annot-meta-bottom';
-      const typeLabel = ann.type.toUpperCase();
-      meta.textContent = `${typeLabel} • ${new Date(ann.createdAt).toLocaleString()}`;
+      const metaWrap = document.createElement('div');
+      metaWrap.className = 'wn-annot-meta-bottom';
       const topRight = document.createElement('div');
       topRight.className = 'wn-annot-card-top-right';
 
@@ -3329,16 +3344,25 @@
       top.appendChild(topRight);
       const comment = document.createElement('div');
       comment.className = 'wn-annot-comment';
-      comment.textContent = ann.comment || '—';
+      const commentText = ann.comment || '—';
+      comment.textContent = commentText;
 
-      const author = document.createElement('div');
-      author.className = 'wn-annot-author';
+      const meta = document.createElement('div');
+      meta.className = 'wn-annot-meta';
       const authorName = (ann.author || '').trim();
-      author.textContent = `Reviewer: ${authorName || 'Unknown reviewer'}`;
-
-      const snippetWrap = document.createElement('div');
-      snippetWrap.className = 'wn-annot-snippet';
-      snippetWrap.textContent = ann.snippet || '(no text)';
+      const authorLabel = (authorName || 'Unknown reviewer').toUpperCase();
+      const createdAt = new Date(ann.createdAt);
+      const createdAtDate = createdAt.toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      });
+      const createdAtTime = createdAt.toLocaleTimeString(undefined, {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      meta.textContent = `${authorLabel} • ${createdAtDate} • ${createdAtTime}`;
+      metaWrap.appendChild(meta);
 
       const showMore = document.createElement('button');
       showMore.type = 'button';
@@ -3346,20 +3370,24 @@
       showMore.textContent = 'See more';
       showMore.addEventListener('click', (evt) => {
         evt.stopPropagation();
-        const expanded = snippetWrap.classList.toggle('expanded');
+        const expanded = comment.classList.toggle('expanded');
         showMore.textContent = expanded ? 'See less' : 'See more';
       });
-      if (!ann.snippet || ann.snippet.length < 80) {
+      if (commentText.length < 160) {
         showMore.style.display = 'none';
       }
 
       item.appendChild(top);
       item.appendChild(comment);
-      item.appendChild(author);
-      item.appendChild(snippetWrap);
       item.appendChild(showMore);
-      item.appendChild(meta);
-      item.addEventListener('click', () => focusAnnotation(ann.id, true, ann.pageUrl, ann.pageKey));
+      item.appendChild(metaWrap);
+      item.addEventListener('click', () => {
+        focusAnnotation(ann.id, true, ann.pageUrl, ann.pageKey);
+        if (isMobileLayout() && state.panel) {
+          state.panel.style.display = 'none';
+          updateToggleActive();
+        }
+      });
       list.appendChild(item);
     });
 
