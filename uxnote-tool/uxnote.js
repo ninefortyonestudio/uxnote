@@ -26,6 +26,7 @@
   const storageKey = `uxnote:site:${siteKey}`;
   const annotatorNameStorageKey = `uxnote:annotator:${siteKey}`;
   const annotatorNamesStorageKey = `uxnote:annotators:${siteKey}`;
+  const importFilesStorageKey = `uxnote:import-files:${siteKey}`;
   const visibilityStorageKey = `uxnote:hidden:${siteKey}`;
   const pendingFocusKey = `uxnote:pending:${siteKey}`;
   const analyticsSrc = 'https://cloud.umami.is/script.js';
@@ -37,6 +38,7 @@
     annotations: [],
     annotatorName: '',
     annotatorNames: [],
+    importFiles: [],
     markers: {},
     highlightSpans: {},
     outlineBox: null,
@@ -45,6 +47,8 @@
     visibilityToggle: null,
     commentModal: null,
     dialogModal: null,
+    importModal: null,
+    exportModal: null,
     markerLayer: null,
     elementOutlines: {},
     customPosition: false,
@@ -64,6 +68,7 @@
     state.hidden = savedHidden !== null ? savedHidden : parseBoolAttr(startHiddenAttr, false);
     state.annotatorName = loadAnnotatorName();
     state.annotatorNames = loadAnnotatorNames();
+    state.importFiles = loadImportFiles();
     injectAnalytics();
     captureBasePadding();
     injectStyles();
@@ -410,10 +415,14 @@
       }
       .wn-annot-filters {
         display: flex;
-        gap: 10px;
-        align-items: center;
+        flex-direction: column;
+        gap: 8px;
         margin-bottom: 12px;
-        flex-wrap: wrap;
+      }
+      .wn-annot-filter-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
       }
       .wn-annot-filters select,
       .wn-annot-filters input[type="search"] {
@@ -424,6 +433,13 @@
         padding: 6px 10px;
         font-size: 12px;
         color: #342d43;
+      }
+      .wn-annot-filter-row select {
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+      .wn-annot-filter-row input[type="search"] {
+        width: 100%;
       }
       .wn-annot-filters select:focus,
       .wn-annot-filters input[type="search"]:focus {
@@ -794,6 +810,7 @@
         display: flex;
         flex-direction: column;
         gap: 6px;
+        margin-top: 4px;
       }
       .wn-annot-name-row label {
         font-size: 13px;
@@ -841,6 +858,270 @@
         border-color: rgba(109, 86, 199, 0.55);
         box-shadow: 0 0 0 3px rgba(109, 86, 199, 0.15);
       }
+      .wn-annot-export-modal {
+        min-width: min(640px, calc(100vw - 40px));
+        max-width: 860px;
+      }
+      .wn-annot-export-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 12px;
+      }
+      .wn-annot-export-panel {
+        border: 1px solid rgba(109, 86, 199, 0.12);
+        border-radius: 14px;
+        padding: 12px;
+        background: #fff;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        min-height: 220px;
+      }
+      .wn-annot-export-panel h5 {
+        margin: 0;
+        font-size: 13px;
+        font-weight: 700;
+        color: #3f3852;
+      }
+      .wn-annot-export-panel p {
+        margin: 0;
+        font-size: 12px;
+        color: #5a5266;
+      }
+      .wn-annot-export-list {
+        display: grid;
+        gap: 8px;
+        overflow-y: auto;
+        padding-right: 4px;
+      }
+      .wn-annot-export-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 14px;
+        font-weight: 600;
+        color: #3f3852;
+      }
+      .wn-annot-export-item input {
+        appearance: none;
+        width: 20px;
+        height: 20px;
+        border-radius: 6px;
+        border: 1.5px solid rgba(109, 86, 199, 0.5);
+        background: #fff;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        transition: all 0.2s ease;
+      }
+      .wn-annot-export-item input:checked {
+        background: #6d56c7;
+        border-color: #6d56c7;
+        box-shadow: 0 0 0 3px rgba(109, 86, 199, 0.18);
+      }
+      .wn-annot-export-item input:checked::after {
+        content: '';
+        width: 8px;
+        height: 5px;
+        border-left: 2px solid #fff;
+        border-bottom: 2px solid #fff;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -55%) rotate(-45deg);
+      }
+      .wn-annot-export-item span {
+        font-size: 14px;
+      }
+      .wn-annot-import-modal {
+        min-width: min(760px, calc(100vw - 40px));
+        max-width: 960px;
+      }
+      .wn-annot-import-body {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .wn-annot-import-drop {
+        position: relative;
+        display: block;
+        border: 1.5px dashed rgba(109, 86, 199, 0.32);
+        border-radius: 14px;
+        padding: 14px;
+        background: linear-gradient(135deg, rgba(109, 86, 199, 0.08), rgba(246, 242, 251, 0.95));
+        cursor: pointer;
+        transition: border 0.2s ease, transform 0.2s ease;
+      }
+      .wn-annot-import-drop:hover {
+        transform: translateY(-1px);
+        border-color: rgba(109, 86, 199, 0.6);
+      }
+      .wn-annot-import-drop.dragover {
+        border-color: rgba(109, 86, 199, 0.9);
+        background: linear-gradient(135deg, rgba(109, 86, 199, 0.16), rgba(246, 242, 251, 0.95));
+      }
+      .wn-annot-import-drop input {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        cursor: pointer;
+      }
+      .wn-annot-import-drop-title {
+        font-size: 13px;
+        font-weight: 700;
+        color: #3f3852;
+      }
+      .wn-annot-import-drop-sub {
+        font-size: 12px;
+        color: #5a5266;
+        margin-top: 4px;
+      }
+      .wn-annot-import-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 12px;
+      }
+      .wn-annot-import-panel {
+        border: 1px solid rgba(109, 86, 199, 0.12);
+        border-radius: 14px;
+        padding: 12px;
+        background: #fff;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        min-height: 220px;
+      }
+      .wn-annot-import-panel h5 {
+        margin: 0;
+        font-size: 13px;
+        font-weight: 700;
+        color: #3f3852;
+      }
+      .wn-annot-import-title-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .wn-annot-import-count {
+        background: rgba(109, 86, 199, 0.16);
+        color: #4b4557;
+        border-radius: 999px;
+        padding: 4px 8px;
+        font-weight: 600;
+        font-size: 11px;
+        border: 1px solid rgba(109, 86, 199, 0.2);
+      }
+      .wn-annot-import-panel p {
+        margin: 0;
+        font-size: 12px;
+        color: #5a5266;
+      }
+      .wn-annot-import-list {
+        display: grid;
+        gap: 8px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding-right: 4px;
+      }
+      .wn-annot-import-card {
+        border: 1px solid rgba(109, 86, 199, 0.14);
+        background: #f8f6fd;
+        border-radius: 12px;
+        padding: 10px 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        min-width: 0;
+      }
+      .wn-annot-import-meta {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-width: 0;
+      }
+      .wn-annot-import-name {
+        font-size: 13px;
+        font-weight: 600;
+        color: #3f3852;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .wn-annot-import-sub {
+        font-size: 11px;
+        color: #5a5266;
+        font-family: "SF Mono", "SFMono-Regular", ui-monospace, monospace;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .wn-annot-import-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .wn-annot-import-badge {
+        background: rgba(109, 86, 199, 0.16);
+        color: #4b4557;
+        border-radius: 999px;
+        padding: 4px 8px;
+        font-weight: 600;
+        font-size: 11px;
+        border: 1px solid rgba(109, 86, 199, 0.2);
+      }
+      .wn-annot-import-remove {
+        border: 1px solid rgba(209, 59, 59, 0.35);
+        background: rgba(209, 59, 59, 0.12);
+        color: #b83232;
+        width: 26px;
+        height: 26px;
+        padding: 0;
+        border-radius: 50%;
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+      }
+      .wn-annot-import-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+        gap: 8px;
+      }
+      .wn-annot-import-stat {
+        background: rgba(109, 86, 199, 0.08);
+        border: 1px solid rgba(109, 86, 199, 0.12);
+        border-radius: 12px;
+        padding: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .wn-annot-import-stat span:first-child {
+        font-size: 11px;
+        color: #5a5266;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+      }
+      .wn-annot-import-stat span:last-child {
+        font-size: 16px;
+        font-weight: 700;
+        color: #3f3852;
+      }
+      .wn-annot-import-empty {
+        font-size: 12px;
+        color: #5a5266;
+        border: 1px dashed rgba(109, 86, 199, 0.18);
+        border-radius: 10px;
+        padding: 10px;
+        text-align: center;
+      }
       .wn-annot-modal .wn-annot-actions {
         display: flex;
         gap: 10px;
@@ -871,6 +1152,14 @@
       .wn-annot-modal .wn-annot-pill.primary:hover {
         transform: translateY(-1px);
         box-shadow: 0 14px 28px rgba(109, 86, 199, 0.4);
+      }
+      .wn-annot-modal .wn-annot-pill.secondary {
+        background: rgba(109, 86, 199, 0.12);
+        color: #4b4557;
+        border: 1px solid rgba(109, 86, 199, 0.22);
+      }
+      .wn-annot-modal .wn-annot-pill.secondary:hover {
+        background: rgba(109, 86, 199, 0.18);
       }
       .wn-annot-modal .wn-annot-prio {
         display: flex;
@@ -957,9 +1246,8 @@
       { action: 'mode', mode: 'element', tip: 'Annotate an element', icon: iconTarget() }
     ];
     const exportButtons = [
-      { action: 'export', tip: 'Export JSON', icon: iconDownload() },
       { action: 'import', tip: 'Import JSON', icon: iconUpload() },
-      { action: 'email', tip: 'Send by email', icon: iconMail() }
+      { action: 'export', tip: 'Export JSON', icon: iconDownload() }
     ];
     const controlButtons = [
       { action: 'toggle-pos', tip: 'Toolbar top / bottom', icon: iconSwap() },
@@ -977,15 +1265,6 @@
     document.body.appendChild(toolbar);
     state.toolbar = toolbar;
 
-    // Hidden input to pick a JSON file during import
-    state.importInput = document.createElement('input');
-    state.importInput.type = 'file';
-    state.importInput.accept = 'application/json';
-    state.importInput.style.display = 'none';
-    state.importInput.className = 'wn-annotator';
-    state.importInput.addEventListener('change', handleImportFile);
-    document.body.appendChild(state.importInput);
-
     const panel = document.createElement('div');
     panel.className = 'wn-annot-panel wn-annotator';
     panel.innerHTML = `
@@ -997,18 +1276,24 @@
           </button>
         </div>
         <div class="wn-annot-filters wn-annotator">
-          <label class="wn-annot-filter-label wn-annotator" for="wn-filter-priority">Priority</label>
-          <select id="wn-filter-priority" class="wn-annotator">
-            <option value="all">All</option>
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
-          </select>
-          <label class="wn-annot-filter-label wn-annotator" for="wn-filter-author">Annotator</label>
-          <select id="wn-filter-author" class="wn-annotator">
-            <option value="all">All</option>
-          </select>
-          <input id="wn-filter-search" class="wn-annotator" type="search" placeholder="Keyword search" />
+          <div class="wn-annot-filter-row wn-annotator">
+            <input id="wn-filter-search" class="wn-annotator" type="search" placeholder="Keyword search" />
+          </div>
+          <div class="wn-annot-filter-row wn-annotator">
+            <label class="wn-annot-filter-label wn-annotator" for="wn-filter-priority">Priority</label>
+            <select id="wn-filter-priority" class="wn-annotator">
+              <option value="all">All</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
+          <div class="wn-annot-filter-row wn-annotator">
+            <label class="wn-annot-filter-label wn-annotator" for="wn-filter-author">Reviewer</label>
+            <select id="wn-filter-author" class="wn-annotator">
+              <option value="all">All</option>
+            </select>
+          </div>
         </div>
       </div>
       <div class="wn-annot-list"></div>
@@ -1083,16 +1368,13 @@
     const nameRow = document.createElement('div');
     nameRow.className = 'wn-annot-name-row wn-annotator';
     const nameLabel = document.createElement('label');
-    nameLabel.textContent = 'Annotator';
+    nameLabel.textContent = 'Reviewer name';
     const nameInputs = document.createElement('div');
     nameInputs.className = 'wn-annot-name-inputs wn-annotator';
-    const nameSelect = document.createElement('select');
-    nameSelect.className = 'wn-annot-name-select wn-annotator';
     const nameInput = document.createElement('input');
     nameInput.type = 'text';
     nameInput.className = 'wn-annotator';
-    nameInput.placeholder = 'Your name';
-    nameInputs.appendChild(nameSelect);
+    nameInput.placeholder = 'Reviewer name';
     nameInputs.appendChild(nameInput);
     nameRow.appendChild(nameLabel);
     nameRow.appendChild(nameInputs);
@@ -1151,7 +1433,6 @@
       okBtn,
       cancelBtn,
       prioButtons,
-      nameSelect,
       nameInput
     };
     return state.commentModal;
@@ -1160,7 +1441,7 @@
   function askForComment(label, defaultValue = '', defaultPriority = 'medium', defaultAuthor = '') {
     return new Promise((resolve) => {
       const modalState = ensureCommentModal();
-      const { backdrop, textarea, title, okBtn, cancelBtn, prioButtons, nameSelect, nameInput } = modalState;
+      const { backdrop, textarea, title, okBtn, cancelBtn, prioButtons, nameInput } = modalState;
       title.textContent = label || 'Add a comment';
       textarea.value = defaultValue || '';
       textarea.placeholder = 'Your comment...';
@@ -1174,46 +1455,18 @@
 
       const names = state.annotatorNames || [];
       const defaultName = defaultAuthor || state.annotatorName || names[0] || '';
-      nameSelect.innerHTML = '';
-      const useSelect = names.length >= 2;
-      if (useSelect) {
-        names.forEach((n) => {
-          const opt = document.createElement('option');
-          opt.value = n;
-          opt.textContent = n;
-          nameSelect.appendChild(opt);
-        });
-        const newOpt = document.createElement('option');
-        newOpt.value = '__new';
-        newOpt.textContent = 'New name...';
-        nameSelect.appendChild(newOpt);
-        nameSelect.style.display = '';
-      } else {
-        nameSelect.style.display = 'none';
-      }
-      const selectDefault = useSelect && names.includes(defaultName) ? defaultName : useSelect ? names[names.length - 1] : '';
-      if (useSelect) {
-        nameSelect.value = selectDefault || '__new';
-      }
       nameInput.value = defaultName || '';
-      nameInput.disabled = useSelect && nameSelect.value !== '__new';
-      nameInput.placeholder = useSelect ? 'New name' : 'Your name';
-
-      const onSelectChange = () => {
-        const isNew = nameSelect.value === '__new';
-        nameInput.disabled = !isNew;
-        if (!isNew) {
-          nameInput.value = nameSelect.value;
-        } else {
-          nameInput.value = '';
-          nameInput.focus();
-        }
-      };
-      if (useSelect) nameSelect.addEventListener('change', onSelectChange);
+      nameInput.disabled = false;
+      nameInput.placeholder = 'Reviewer name';
 
       backdrop.classList.add('show');
-      textarea.focus();
-      textarea.select();
+      if (defaultName) {
+        textarea.focus();
+        textarea.select();
+      } else {
+        nameInput.focus();
+        nameInput.select();
+      }
 
       const close = (val) => {
         backdrop.classList.remove('show');
@@ -1222,18 +1475,14 @@
         backdrop.removeEventListener('click', onBackdrop);
         document.removeEventListener('keydown', onKey);
         prioButtons.forEach((b, idx) => b.removeEventListener('click', prioHandlers[idx]));
-        if (useSelect) nameSelect.removeEventListener('change', onSelectChange);
         resolve(val);
       };
       const onOk = async () => {
         const selected = prioButtons.find((b) => b.classList.contains('active'));
         const priority = selected ? selected.getAttribute('data-priority') : defaultPriority;
-        let author = nameInput.value.trim();
-        if (useSelect && nameSelect.value !== '__new') {
-          author = nameSelect.value;
-        }
+        const author = nameInput.value.trim();
         if (!author) {
-          await alertDialog('Please enter your name.', 'Name required');
+          await alertDialog('Please enter a reviewer name.', 'Reviewer name required');
           return;
         }
         recordAnnotatorName(author);
@@ -1264,6 +1513,598 @@
     const val = await askForComment(label);
     if (!val) return null;
     return val;
+  }
+
+  function ensureExportModal() {
+    if (state.exportModal) return state.exportModal;
+    const backdrop = document.createElement('div');
+    backdrop.className = 'wn-annot-modal-backdrop wn-annotator';
+    const modal = document.createElement('div');
+    modal.className = 'wn-annot-modal wn-annotator wn-annot-export-modal';
+
+    const title = document.createElement('h4');
+    title.textContent = 'Export annotations';
+
+    const body = document.createElement('div');
+    body.className = 'wn-annot-export-grid wn-annotator';
+
+    const reviewerPanel = document.createElement('div');
+    reviewerPanel.className = 'wn-annot-export-panel wn-annotator';
+    const reviewerTitle = document.createElement('h5');
+    reviewerTitle.textContent = 'Reviewers';
+    const reviewerDesc = document.createElement('p');
+    reviewerDesc.textContent = 'Choose reviewers to include.';
+    const reviewerList = document.createElement('div');
+    reviewerList.className = 'wn-annot-export-list wn-annotator';
+    reviewerPanel.appendChild(reviewerTitle);
+    reviewerPanel.appendChild(reviewerDesc);
+    reviewerPanel.appendChild(reviewerList);
+
+    const prioPanel = document.createElement('div');
+    prioPanel.className = 'wn-annot-export-panel wn-annotator';
+    const prioTitle = document.createElement('h5');
+    prioTitle.textContent = 'Criticality';
+    const prioDesc = document.createElement('p');
+    prioDesc.textContent = 'Select priority levels.';
+    const prioList = document.createElement('div');
+    prioList.className = 'wn-annot-export-list wn-annotator';
+    prioPanel.appendChild(prioTitle);
+    prioPanel.appendChild(prioDesc);
+    prioPanel.appendChild(prioList);
+
+    body.appendChild(reviewerPanel);
+    body.appendChild(prioPanel);
+
+    const actions = document.createElement('div');
+    actions.className = 'wn-annot-actions wn-annotator';
+    const cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'wn-annot-pill cancel wn-annotator';
+    cancelBtn.textContent = 'Cancel';
+    const mailBtn = document.createElement('button');
+    mailBtn.type = 'button';
+    mailBtn.className = 'wn-annot-pill secondary wn-annotator';
+    mailBtn.textContent = 'Send by mail';
+    const exportBtn = document.createElement('button');
+    exportBtn.type = 'button';
+    exportBtn.className = 'wn-annot-pill primary wn-annotator';
+    exportBtn.textContent = 'Export file';
+    actions.appendChild(cancelBtn);
+    actions.appendChild(mailBtn);
+    actions.appendChild(exportBtn);
+
+    modal.appendChild(title);
+    modal.appendChild(body);
+    modal.appendChild(actions);
+    backdrop.appendChild(modal);
+    document.body.appendChild(backdrop);
+
+    const close = () => {
+      backdrop.classList.remove('show');
+      document.removeEventListener('keydown', onKey);
+    };
+    const onKey = (evt) => {
+      if (evt.key === 'Escape') close();
+    };
+    const onBackdrop = (evt) => {
+      if (evt.target === backdrop) close();
+    };
+
+    cancelBtn.addEventListener('click', close);
+    backdrop.addEventListener('click', onBackdrop);
+
+    exportBtn.addEventListener('click', () => {
+      const reviewers = getCheckedValues(reviewerList);
+      const priorities = getCheckedValues(prioList);
+      exportAnnotationsFiltered({
+        reviewers,
+        priorities
+      });
+      close();
+    });
+
+    mailBtn.addEventListener('click', () => {
+      const reviewers = getCheckedValues(reviewerList);
+      const priorities = getCheckedValues(prioList);
+      emailAnnotationsFiltered({
+        reviewers,
+        priorities
+      });
+      close();
+    });
+
+    state.exportModal = {
+      backdrop,
+      reviewerList,
+      prioList,
+      onKey
+    };
+    return state.exportModal;
+  }
+
+  function openExportModal() {
+    const modalState = ensureExportModal();
+    renderExportModal();
+    modalState.backdrop.classList.add('show');
+    document.addEventListener('keydown', modalState.onKey);
+  }
+
+  function renderExportModal() {
+    if (!state.exportModal) return;
+    const { reviewerList, prioList } = state.exportModal;
+
+    reviewerList.innerHTML = '';
+    getExportReviewers().forEach((reviewer) => {
+      reviewerList.appendChild(makeExportCheckbox(reviewer.value, reviewer.label, true));
+    });
+
+    prioList.innerHTML = '';
+    getExportPriorities().forEach((prio) => {
+      prioList.appendChild(makeExportCheckbox(prio.value, prio.label, true));
+    });
+  }
+
+  function getExportReviewers() {
+    const reviewers = Array.from(
+      new Set(
+        state.annotations.map((ann) => {
+          const name = (ann.author || '').trim();
+          return name || '__unknown';
+        })
+      )
+    )
+      .filter(Boolean)
+      .sort((a, b) => getAuthorLabel(a).localeCompare(getAuthorLabel(b)));
+
+    return reviewers.map((value) => ({
+      value,
+      label: getAuthorLabel(value)
+    }));
+  }
+
+  function getExportPriorities() {
+    return [
+      { value: 'high', label: 'High' },
+      { value: 'medium', label: 'Medium' },
+      { value: 'low', label: 'Low' }
+    ];
+  }
+
+  function makeExportCheckbox(value, label, checked) {
+    const row = document.createElement('label');
+    row.className = 'wn-annot-export-item wn-annotator';
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.value = value;
+    input.checked = checked;
+    input.className = 'wn-annotator';
+    const text = document.createElement('span');
+    text.textContent = label;
+    row.appendChild(input);
+    row.appendChild(text);
+    return row;
+  }
+
+  function getCheckedValues(container) {
+    return Array.from(container.querySelectorAll('input[type="checkbox"]'))
+      .filter((input) => input.checked)
+      .map((input) => input.value);
+  }
+
+  function ensureImportModal() {
+    if (state.importModal) return state.importModal;
+    const backdrop = document.createElement('div');
+    backdrop.className = 'wn-annot-modal-backdrop wn-annotator';
+    const modal = document.createElement('div');
+    modal.className = 'wn-annot-modal wn-annotator wn-annot-import-modal';
+
+    const title = document.createElement('h4');
+    title.textContent = 'Import JSON files';
+
+    const body = document.createElement('div');
+    body.className = 'wn-annot-import-body wn-annotator';
+
+    const dropzone = document.createElement('label');
+    dropzone.className = 'wn-annot-import-drop wn-annotator';
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'application/json';
+    fileInput.multiple = true;
+    fileInput.className = 'wn-annotator';
+    const dropContent = document.createElement('div');
+    const dropTitle = document.createElement('div');
+    dropTitle.className = 'wn-annot-import-drop-title wn-annotator';
+    dropTitle.textContent = 'Drop JSON files here';
+    const dropSub = document.createElement('div');
+    dropSub.className = 'wn-annot-import-drop-sub wn-annotator';
+    dropSub.textContent = 'or click to select files';
+    dropContent.appendChild(dropTitle);
+    dropContent.appendChild(dropSub);
+    dropzone.appendChild(fileInput);
+    dropzone.appendChild(dropContent);
+
+    const grid = document.createElement('div');
+    grid.className = 'wn-annot-import-grid wn-annotator';
+
+    const filesPanel = document.createElement('div');
+    filesPanel.className = 'wn-annot-import-panel wn-annotator';
+    const filesTitleRow = document.createElement('div');
+    filesTitleRow.className = 'wn-annot-import-title-row wn-annotator';
+    const filesTitle = document.createElement('h5');
+    filesTitle.textContent = 'Loaded files';
+    const filesCount = document.createElement('span');
+    filesCount.className = 'wn-annot-import-count wn-annotator';
+    filesCount.textContent = '0';
+    const filesDesc = document.createElement('p');
+    filesDesc.textContent = 'Files are saved automatically.';
+    const fileList = document.createElement('div');
+    fileList.className = 'wn-annot-import-list wn-annotator';
+    filesTitleRow.appendChild(filesTitle);
+    filesTitleRow.appendChild(filesCount);
+    filesPanel.appendChild(filesTitleRow);
+    filesPanel.appendChild(filesDesc);
+    filesPanel.appendChild(fileList);
+
+    const reviewersPanel = document.createElement('div');
+    reviewersPanel.className = 'wn-annot-import-panel wn-annotator';
+    const reviewersTitle = document.createElement('h5');
+    reviewersTitle.textContent = 'Reviewer summary';
+    const reviewersDesc = document.createElement('p');
+    reviewersDesc.textContent = 'Counts based on imported files.';
+    const stats = document.createElement('div');
+    stats.className = 'wn-annot-import-stats wn-annotator';
+    const statReviewers = document.createElement('div');
+    statReviewers.className = 'wn-annot-import-stat wn-annotator';
+    const statReviewersLabel = document.createElement('span');
+    statReviewersLabel.textContent = 'Reviewers';
+    const statReviewersValue = document.createElement('span');
+    statReviewersValue.textContent = '0';
+    statReviewers.appendChild(statReviewersLabel);
+    statReviewers.appendChild(statReviewersValue);
+    const statComments = document.createElement('div');
+    statComments.className = 'wn-annot-import-stat wn-annotator';
+    const statCommentsLabel = document.createElement('span');
+    statCommentsLabel.textContent = 'Comments';
+    const statCommentsValue = document.createElement('span');
+    statCommentsValue.textContent = '0';
+    statComments.appendChild(statCommentsLabel);
+    statComments.appendChild(statCommentsValue);
+    stats.appendChild(statReviewers);
+    stats.appendChild(statComments);
+    const reviewerList = document.createElement('div');
+    reviewerList.className = 'wn-annot-import-list wn-annotator';
+    reviewersPanel.appendChild(reviewersTitle);
+    reviewersPanel.appendChild(reviewersDesc);
+    reviewersPanel.appendChild(stats);
+    reviewersPanel.appendChild(reviewerList);
+
+    grid.appendChild(filesPanel);
+    grid.appendChild(reviewersPanel);
+
+    const actions = document.createElement('div');
+    actions.className = 'wn-annot-actions wn-annotator';
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'wn-annot-pill cancel wn-annotator';
+    closeBtn.textContent = 'Close';
+    actions.appendChild(closeBtn);
+
+    body.appendChild(dropzone);
+    body.appendChild(grid);
+    modal.appendChild(title);
+    modal.appendChild(body);
+    modal.appendChild(actions);
+    backdrop.appendChild(modal);
+    document.body.appendChild(backdrop);
+
+    const close = () => {
+      backdrop.classList.remove('show');
+      document.removeEventListener('keydown', onKey);
+    };
+    const onKey = (evt) => {
+      if (evt.key === 'Escape') close();
+    };
+    const onBackdrop = (evt) => {
+      if (evt.target === backdrop) close();
+    };
+
+    closeBtn.addEventListener('click', close);
+    backdrop.addEventListener('click', onBackdrop);
+
+    ['dragenter', 'dragover'].forEach((evtName) => {
+      dropzone.addEventListener(evtName, (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        dropzone.classList.add('dragover');
+      });
+    });
+    ['dragleave', 'drop'].forEach((evtName) => {
+      dropzone.addEventListener(evtName, (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        dropzone.classList.remove('dragover');
+      });
+    });
+    dropzone.addEventListener('drop', (event) => {
+      const files = event.dataTransfer?.files;
+      if (files && files.length) {
+        handleImportFiles(Array.from(files));
+      }
+    });
+
+    fileInput.addEventListener('change', (event) => {
+      const files = event.target.files;
+      if (files && files.length) {
+        handleImportFiles(Array.from(files));
+      }
+      fileInput.value = '';
+    });
+
+    fileList.addEventListener('click', (event) => {
+      const btn = event.target.closest('[data-import-remove]');
+      if (!btn) return;
+      removeImportedFile(btn.dataset.importRemove);
+    });
+
+    state.importModal = {
+      backdrop,
+      modal,
+      fileInput,
+      fileList,
+      reviewerList,
+      filesCount,
+      statReviewersValue,
+      statCommentsValue,
+      onKey,
+      close
+    };
+    return state.importModal;
+  }
+
+  function openImportModal() {
+    const modalState = ensureImportModal();
+    renderImportModal();
+    modalState.backdrop.classList.add('show');
+    document.addEventListener('keydown', modalState.onKey);
+  }
+
+  function renderImportModal() {
+    if (!state.importModal) return;
+    const { fileList, reviewerList, filesCount, statReviewersValue, statCommentsValue } = state.importModal;
+    const { fileCounts, reviewerCounts, totalComments } = buildImportSummary();
+
+    fileList.innerHTML = '';
+    if (!state.importFiles.length) {
+      const empty = document.createElement('div');
+      empty.className = 'wn-annot-import-empty wn-annotator';
+      empty.textContent = 'No imported files yet.';
+      fileList.appendChild(empty);
+    } else {
+      state.importFiles.forEach((file) => {
+        const card = document.createElement('div');
+        card.className = 'wn-annot-import-card wn-annotator';
+
+        const meta = document.createElement('div');
+        meta.className = 'wn-annot-import-meta wn-annotator';
+        const name = document.createElement('div');
+        name.className = 'wn-annot-import-name wn-annotator';
+        name.textContent = file.name;
+        const sub = document.createElement('div');
+        sub.className = 'wn-annot-import-sub wn-annotator';
+        const count = fileCounts.get(file.id) || 0;
+        const urlLabel = file.pageUrl ? ` | ${truncateText(file.pageUrl, 36)}` : '';
+        sub.textContent = `${count} comments | ${formatBytes(file.size)}${urlLabel}`;
+        meta.appendChild(name);
+        meta.appendChild(sub);
+
+        const actions = document.createElement('div');
+        actions.className = 'wn-annot-import-actions wn-annotator';
+        const badge = document.createElement('div');
+        badge.className = 'wn-annot-import-badge wn-annotator';
+        badge.textContent = String(count);
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'wn-annot-import-remove wn-annotator';
+        removeBtn.dataset.importRemove = file.id;
+        removeBtn.textContent = 'x';
+        actions.appendChild(badge);
+        actions.appendChild(removeBtn);
+
+        card.appendChild(meta);
+        card.appendChild(actions);
+        fileList.appendChild(card);
+      });
+    }
+
+    reviewerList.innerHTML = '';
+    if (!reviewerCounts.size) {
+      const empty = document.createElement('div');
+      empty.className = 'wn-annot-import-empty wn-annotator';
+      empty.textContent = 'No reviewers yet.';
+      reviewerList.appendChild(empty);
+    } else {
+      Array.from(reviewerCounts.entries())
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+        .forEach(([name, count]) => {
+          const card = document.createElement('div');
+          card.className = 'wn-annot-import-card wn-annotator';
+
+          const meta = document.createElement('div');
+          meta.className = 'wn-annot-import-meta wn-annotator';
+          const reviewerName = document.createElement('div');
+          reviewerName.className = 'wn-annot-import-name wn-annotator';
+          reviewerName.textContent = name;
+          const reviewerCount = document.createElement('div');
+          reviewerCount.className = 'wn-annot-import-sub wn-annotator';
+          reviewerCount.textContent = `${count} comments`;
+          meta.appendChild(reviewerName);
+          meta.appendChild(reviewerCount);
+
+          const badge = document.createElement('div');
+          badge.className = 'wn-annot-import-badge wn-annotator';
+          badge.textContent = String(count);
+
+          card.appendChild(meta);
+          card.appendChild(badge);
+          reviewerList.appendChild(card);
+        });
+    }
+
+    filesCount.textContent = String(state.importFiles.length);
+    statReviewersValue.textContent = String(reviewerCounts.size);
+    statCommentsValue.textContent = String(totalComments);
+  }
+
+  function buildImportSummary() {
+    const fileCounts = new Map();
+    const reviewerCounts = new Map();
+    const imported = state.annotations.filter((ann) => ann.importFileId);
+    imported.forEach((ann) => {
+      if (ann.importFileId) {
+        fileCounts.set(ann.importFileId, (fileCounts.get(ann.importFileId) || 0) + 1);
+      }
+      const reviewer = (ann.author || '').trim() || 'Unknown reviewer';
+      reviewerCounts.set(reviewer, (reviewerCounts.get(reviewer) || 0) + 1);
+    });
+    return {
+      fileCounts,
+      reviewerCounts,
+      totalComments: imported.length
+    };
+  }
+
+  async function handleImportFiles(files) {
+    if (!files || !files.length) return;
+    const existingIds = new Set(state.annotations.map((ann) => ann.id));
+    let importedCount = 0;
+    for (const file of files) {
+      const result = await parseImportFile(file, existingIds);
+      if (!result) continue;
+      const { fileMeta, annotations } = result;
+      if (!annotations.length) continue;
+      state.importFiles.push(fileMeta);
+      state.annotations.push(...annotations);
+      importedCount += annotations.length;
+    }
+    if (!importedCount) {
+      renderImportModal();
+      return;
+    }
+    saveAnnotations();
+    saveImportFiles();
+    refreshKnownAnnotatorNames();
+    clearRenderedAnnotations();
+    restoreAnnotations();
+    renumberMarkers();
+    renderImportModal();
+  }
+
+  async function parseImportFile(file, existingIds) {
+    let parsed;
+    try {
+      const text = await file.text();
+      parsed = JSON.parse(text);
+    } catch (err) {
+      await alertDialog(`Invalid JSON in ${file.name}.`, 'Import error');
+      return null;
+    }
+
+    const annotations = Array.isArray(parsed) ? parsed : parsed.annotations;
+    if (!Array.isArray(annotations)) {
+      await alertDialog(`Unsupported JSON format in ${file.name}.`, 'Import error');
+      return null;
+    }
+
+    const fallbackAuthor = Array.isArray(parsed)
+      ? ''
+      : parsed.exportedBy || parsed.annotator || parsed.author || '';
+    const payloadCreatedAt = Array.isArray(parsed) ? file.lastModified : parsed.createdAt;
+    const pageUrl = Array.isArray(parsed) ? '' : parsed.pageUrl || '';
+    const fileId = generateImportFileId();
+
+    const normalized = annotations
+      .filter((ann) => ann && ann.type !== 'region')
+      .map((ann) =>
+        normalizeImportedAnnotation(ann, {
+          fallbackAuthor,
+          createdAt: payloadCreatedAt,
+          pageUrl,
+          fileId,
+          existingIds
+        })
+      );
+
+    return {
+      fileMeta: {
+        id: fileId,
+        name: file.name,
+        size: file.size,
+        pageUrl,
+        importedAt: Date.now()
+      },
+      annotations: normalized
+    };
+  }
+
+  function normalizeImportedAnnotation(annotation, options) {
+    const ann = annotation && typeof annotation === 'object' ? annotation : {};
+    const author = (ann.author || options.fallbackAuthor || '').trim();
+    const pageUrl = ann.pageUrl || options.pageUrl || window.location.href;
+    const id = ensureUniqueImportId(ann.id, options.existingIds);
+    const normalized = {
+      ...ann,
+      id,
+      createdAt: ann.createdAt || options.createdAt || Date.now(),
+      priority: ann.priority || 'medium',
+      author,
+      pageUrl,
+      importFileId: options.fileId
+    };
+    if (!normalized.pageKey) {
+      normalized.pageKey = normalizePageKey(pageUrl);
+    }
+    return normalized;
+  }
+
+  function ensureUniqueImportId(id, existingIds) {
+    if (id && !existingIds.has(id)) {
+      existingIds.add(id);
+      return id;
+    }
+    let next;
+    do {
+      next = generateId();
+    } while (existingIds.has(next));
+    existingIds.add(next);
+    return next;
+  }
+
+  function removeImportedFile(fileId) {
+    const nextFiles = state.importFiles.filter((file) => file.id !== fileId);
+    if (nextFiles.length === state.importFiles.length) return;
+    state.importFiles = nextFiles;
+    state.annotations = state.annotations.filter((ann) => ann.importFileId !== fileId);
+    saveAnnotations();
+    saveImportFiles();
+    refreshKnownAnnotatorNames();
+    clearRenderedAnnotations();
+    restoreAnnotations();
+    renumberMarkers();
+    renderImportModal();
+  }
+
+  function formatBytes(bytes) {
+    if (!bytes) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB'];
+    const idx = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+    const value = bytes / Math.pow(1024, idx);
+    return `${value.toFixed(value < 10 && idx > 0 ? 1 : 0)} ${units[idx]}`;
+  }
+
+  function truncateText(value, max) {
+    if (typeof value !== 'string') return '';
+    if (value.length <= max) return value;
+    return value.slice(0, max - 3) + '...';
   }
 
   function ensureDialogModal() {
@@ -1544,6 +2385,33 @@
     }
   }
 
+  function loadImportFiles() {
+    try {
+      const stored = localStorage.getItem(importFilesStorageKey);
+      const parsed = stored ? JSON.parse(stored) : [];
+      if (!Array.isArray(parsed)) return [];
+      return parsed
+        .filter((file) => file && typeof file === 'object')
+        .map((file) => ({
+          id: file.id || generateImportFileId(),
+          name: String(file.name || 'Imported file'),
+          size: Number(file.size || 0),
+          pageUrl: typeof file.pageUrl === 'string' ? file.pageUrl : '',
+          importedAt: Number(file.importedAt || 0)
+        }));
+    } catch (err) {
+      return [];
+    }
+  }
+
+  function saveImportFiles() {
+    try {
+      localStorage.setItem(importFilesStorageKey, JSON.stringify(state.importFiles || []));
+    } catch (err) {
+      // ignore storage errors
+    }
+  }
+
   function recordAnnotatorName(name) {
     const trimmed = (name || '').trim();
     if (!trimmed) return;
@@ -1644,15 +2512,11 @@
       return;
     }
     if (action === 'export') {
-      await exportAnnotations();
+      openExportModal();
       return;
     }
     if (action === 'import') {
-      if (state.importInput) state.importInput.click();
-      return;
-    }
-    if (action === 'email') {
-      await emailAnnotations();
+      openImportModal();
       return;
     }
     if (action === 'toggle-panel') {
@@ -2397,7 +3261,7 @@
       const author = document.createElement('div');
       author.className = 'wn-annot-author';
       const authorName = (ann.author || '').trim();
-      author.textContent = `Annotator: ${authorName || 'Unknown annotator'}`;
+      author.textContent = `Reviewer: ${authorName || 'Unknown reviewer'}`;
 
       const snippetWrap = document.createElement('div');
       snippetWrap.className = 'wn-annot-snippet';
@@ -2476,16 +3340,53 @@
     URL.revokeObjectURL(url);
   }
 
-  function buildAnnotationsPayload() {
+  function exportAnnotationsFiltered(filters) {
+    const reviewers = new Set((filters && filters.reviewers) || []);
+    const priorities = new Set((filters && filters.priorities) || []);
+    const filtered = state.annotations.filter((ann) => {
+      const reviewerValue = (ann.author || '').trim() || '__unknown';
+      const priorityValue = ann.priority || 'medium';
+      const reviewerOk = !reviewers.size || reviewers.has(reviewerValue);
+      const priorityOk = !priorities.size || priorities.has(priorityValue);
+      return reviewerOk && priorityOk;
+    });
+    const payload = buildAnnotationsPayload(filtered);
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = buildFilename();
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function buildAnnotationsPayload(annotations = state.annotations) {
     return {
       pageUrl: window.location.href,
       createdAt: Date.now(),
-      annotations: state.annotations
+      annotations
     };
   }
 
+  function emailAnnotationsFiltered(filters) {
+    const reviewers = new Set((filters && filters.reviewers) || []);
+    const priorities = new Set((filters && filters.priorities) || []);
+    const filtered = state.annotations.filter((ann) => {
+      const reviewerValue = (ann.author || '').trim() || '__unknown';
+      const priorityValue = ann.priority || 'medium';
+      const reviewerOk = !reviewers.size || reviewers.has(reviewerValue);
+      const priorityOk = !priorities.size || priorities.has(priorityValue);
+      return reviewerOk && priorityOk;
+    });
+    sendAnnotationsByMail(filtered);
+  }
+
   async function emailAnnotations() {
-    const payload = buildAnnotationsPayload();
+    sendAnnotationsByMail(state.annotations);
+  }
+
+  function sendAnnotationsByMail(annotations) {
+    const payload = buildAnnotationsPayload(annotations);
     const data = JSON.stringify(payload, null, 2);
     const subject = encodeURIComponent(buildFilename());
     const body = encodeURIComponent(data);
@@ -2499,41 +3400,8 @@
     return 'wn-' + Math.random().toString(36).slice(2, 8) + Date.now().toString(36);
   }
 
-  function handleImportFile(evt) {
-    // Read an imported JSON file and re-render annotations
-    const file = evt.target.files && evt.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async () => {
-      try {
-        const parsed = JSON.parse(reader.result);
-        const imported = Array.isArray(parsed) ? parsed : parsed.annotations;
-        if (!Array.isArray(imported)) throw new Error('Invalid JSON format');
-        const fallbackAuthor = Array.isArray(parsed)
-          ? ''
-          : parsed.exportedBy || parsed.annotator || parsed.author || '';
-        clearRenderedAnnotations();
-        state.annotations = imported.map((ann) => ({
-          ...ann,
-          id: ann.id || generateId(),
-          createdAt: ann.createdAt || Date.now(),
-          priority: ann.priority || 'medium',
-          author: ann.author || fallbackAuthor || ''
-        }));
-        saveAnnotations();
-        refreshKnownAnnotatorNames();
-        restoreAnnotations();
-      } catch (err) {
-        await alertDialog('Import failed: ' + err.message, 'Import error');
-      } finally {
-        evt.target.value = '';
-      }
-    };
-    reader.onerror = async () => {
-      await alertDialog('Unable to read file.', 'Import error');
-      evt.target.value = '';
-    };
-    reader.readAsText(file);
+  function generateImportFileId() {
+    return 'imp-' + Math.random().toString(36).slice(2, 8) + Date.now().toString(36);
   }
 
   function buildFilename() {

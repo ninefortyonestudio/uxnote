@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Uxnote Data Importer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="bg-shape bg-one"></div>
+  <div class="bg-shape bg-two"></div>
+
+  <main class="app">
+    <header class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">Uxnote Data Importer</p>
+        <h1>Merge plusieurs exports JSON en un seul fichier.</h1>
+        <p class="lead">Chargez les fichiers exportes par vos reviewers, verifiez les noms et telechargez un JSON unique pour l'import.</p>
+      </div>
+      <div class="hero-actions">
+        <button class="ghost" id="clear-btn" type="button">Reset list</button>
+        <button class="primary" id="download-btn" type="button" disabled>Download merged JSON</button>
+      </div>
+    </header>
+
+    <section class="grid">
+      <div class="panel reveal" data-delay="0">
+        <div class="panel-head">
+          <h2>Fichiers charges</h2>
+          <p>Ajoutez plusieurs exports Uxnote.</p>
+        </div>
+        <label class="dropzone" id="dropzone">
+          <input id="file-input" type="file" accept="application/json" multiple>
+          <div class="dropzone-content">
+            <span class="drop-title">Deposer des fichiers ici</span>
+            <span class="drop-sub">ou cliquer pour choisir vos JSON</span>
+          </div>
+        </label>
+        <div class="file-list" id="file-list"></div>
+      </div>
+
+      <div class="panel reveal" data-delay="120">
+        <div class="panel-head">
+          <h2>Resume reviewers</h2>
+          <p>Nombre de commentaires par reviewer.</p>
+        </div>
+        <div class="stats">
+          <div>
+            <span class="stat-label">Fichiers</span>
+            <span class="stat-value" id="stat-files">0</span>
+          </div>
+          <div>
+            <span class="stat-label">Reviewers</span>
+            <span class="stat-value" id="stat-reviewers">0</span>
+          </div>
+          <div>
+            <span class="stat-label">Commentaires</span>
+            <span class="stat-value" id="stat-comments">0</span>
+          </div>
+        </div>
+        <div class="reviewer-list" id="reviewer-list"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
