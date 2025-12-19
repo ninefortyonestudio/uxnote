@@ -3076,8 +3076,7 @@
     marker.className = 'wn-annot-marker wn-annotator';
     marker.textContent = state.annotations.findIndex((a) => a.id === annotation.id) + 1;
     marker.dataset.wnAnnotId = annotation.id;
-    marker.style.left = `${rect.x + rect.w - 6}px`;
-    marker.style.top = `${rect.y + 6}px`;
+    positionMarker(marker, rect, annotation);
     marker.addEventListener('click', () => focusAnnotation(annotation.id));
     state.markerLayer.appendChild(marker);
     state.markers[annotation.id] = { el: marker, rect };
@@ -3102,6 +3101,30 @@
       return { x: r.x, y: r.y, w: r.width, h: r.height };
     }
     return null;
+  }
+
+  function positionMarker(marker, rect, annotation) {
+    const offset = getMarkerOffset(annotation);
+    marker.style.left = `${rect.x + rect.w - 6 + offset.x}px`;
+    marker.style.top = `${rect.y + 6 + offset.y}px`;
+  }
+
+  function getMarkerOffset(annotation) {
+    if (annotation.type !== 'element') return { x: 0, y: 0 };
+    const target = annotation.target && annotation.target.xpath;
+    if (!target) return { x: 0, y: 0 };
+    const group = state.annotations.filter(
+      (ann) =>
+        ann.type === 'element' &&
+        ann.pageKey === annotation.pageKey &&
+        ann.target &&
+        ann.target.xpath === target
+    );
+    if (group.length <= 1) return { x: 0, y: 0 };
+    const index = group.findIndex((ann) => ann.id === annotation.id);
+    if (index <= 0) return { x: 0, y: 0 };
+    const gap = 24;
+    return { x: -index * gap, y: 0 };
   }
 
   function ensureElementOutline(annotation) {
@@ -3135,8 +3158,7 @@
       const rect = getViewportRect(ann);
       if (!rect) return;
       entry.rect = rect;
-      entry.el.style.left = `${rect.x + rect.w - 6}px`;
-      entry.el.style.top = `${rect.y + 6}px`;
+      positionMarker(entry.el, rect, ann);
 
       if (ann.type === 'element') {
         ensureElementOutline(ann);
@@ -3352,6 +3374,7 @@
     removeRenderedAnnotation(id);
     renderList();
     renumberMarkers();
+    refreshMarkers();
   }
 
   async function editAnnotation(id) {
