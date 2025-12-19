@@ -246,25 +246,54 @@
       }
       @media (max-width: 640px) {
         .wn-annot-toolbar {
-          gap: 6px;
+          gap: 4px;
           padding: 6px 8px;
           flex-wrap: nowrap;
-          max-width: calc(100vw - 16px);
+          left: 8px;
+          right: 8px;
+          transform: none;
+          width: calc(100vw - 16px);
           overflow-x: auto;
           -webkit-overflow-scrolling: touch;
         }
         .wn-annot-toolbar button {
-          --wn-btn-size: 36px;
+          --wn-btn-size: clamp(30px, 9vw, 36px);
         }
         .wn-annot-group {
-          gap: 6px;
+          gap: 4px;
         }
         .wn-annot-spacer {
+          display: block;
+          flex: 1 1 auto;
+          width: auto;
+          min-width: clamp(8px, 4vw, 22px);
+        }
+        body:not(.wn-annot-hidden) .wn-annot-toolbar .wn-annot-visibility-btn {
+          position: static;
+          top: auto;
+          bottom: auto;
+          left: auto;
+          right: auto;
+          --wn-btn-size: clamp(30px, 9vw, 36px);
+          width: var(--wn-btn-size);
+          height: var(--wn-btn-size);
+          min-width: var(--wn-btn-size);
+          max-width: var(--wn-btn-size);
+          min-height: var(--wn-btn-size);
+          max-height: var(--wn-btn-size);
+          flex: 0 0 var(--wn-btn-size);
+          border: none;
+          background: transparent;
+          box-shadow: none;
+        }
+        body:not(.wn-annot-hidden) .wn-annot-toolbar .wn-annot-visibility-btn::after {
           display: none;
         }
-        .wn-annot-visibility-btn {
-          --wn-btn-size: 42px;
-          left: 10px;
+        body.wn-annot-hidden .wn-annot-visibility-btn {
+          opacity: 0.7;
+          background: rgba(246, 242, 251, 0.35);
+          border-color: rgba(109, 86, 199, 0.22);
+          box-shadow: 0 6px 16px rgba(73, 64, 157, 0.16);
         }
         .wn-annot-logo {
           display: none;
@@ -877,6 +906,13 @@
         border-color: rgba(109, 86, 199, 0.55);
         box-shadow: 0 0 0 3px rgba(109, 86, 199, 0.15);
       }
+      @media (max-width: 640px) {
+        .wn-annot-modal textarea,
+        .wn-annot-modal input[type="text"],
+        .wn-annot-modal select {
+          font-size: 16px;
+        }
+      }
       .wn-annot-export-modal {
         min-width: min(640px, calc(100vw - 40px));
         max-width: 860px;
@@ -1363,6 +1399,23 @@
     createVisibilityToggle();
   }
 
+  function mountVisibilityToggle() {
+    if (!state.visibilityToggle) return;
+    const btn = state.visibilityToggle;
+    const inlineTarget = isMobileLayout() && state.toolbar && !state.hidden;
+    const target = inlineTarget ? state.toolbar : document.body;
+    if (btn.parentNode !== target) {
+      if (btn.parentNode) {
+        btn.parentNode.removeChild(btn);
+      }
+      if (target === state.toolbar) {
+        state.toolbar.insertBefore(btn, state.toolbar.firstChild);
+      } else {
+        document.body.appendChild(btn);
+      }
+    }
+  }
+
   function createVisibilityToggle() {
     if (state.visibilityToggle) return;
     // Floating toggle to hide/show every annotator element
@@ -1374,7 +1427,7 @@
     btn.innerHTML = iconEyeOpen();
     btn.addEventListener('click', toggleAnnotatorVisibility);
     state.visibilityToggle = btn;
-    document.body.appendChild(btn);
+    mountVisibilityToggle();
     positionVisibilityToggle();
     syncVisibilityButton();
   }
@@ -2220,6 +2273,7 @@
     window.addEventListener('resize', applyPageOffset);
     window.addEventListener('resize', positionPanel);
     window.addEventListener('resize', positionTip);
+    window.addEventListener('resize', positionVisibilityToggle);
     window.addEventListener('scroll', refreshMarkers, { passive: true });
   }
 
@@ -2606,6 +2660,7 @@
       hideOutline();
     }
     syncVisibilityButton();
+    positionVisibilityToggle();
     applyPageOffset();
     if (!hidden) {
       refreshMarkers();
@@ -2628,7 +2683,24 @@
   function positionVisibilityToggle() {
     const btn = state.visibilityToggle;
     if (!btn) return;
+    mountVisibilityToggle();
     const inset = 18;
+    if (isMobileLayout()) {
+      if (state.hidden) {
+        btn.style.bottom = `${inset}px`;
+        btn.style.left = `${inset}px`;
+        btn.style.top = '';
+        btn.style.right = '';
+      } else {
+        btn.style.top = '';
+        btn.style.right = '';
+        btn.style.bottom = '';
+        btn.style.left = '';
+      }
+      return;
+    }
+    btn.style.left = '';
+    btn.style.right = '';
     if (position === 'top') {
       btn.style.top = `${inset}px`;
       btn.style.bottom = '';
