@@ -11,8 +11,17 @@
   const scriptSrc = script && script.getAttribute('src');
   const scriptBase = scriptSrc ? scriptSrc.split('/').slice(0, -1).join('/') : '';
   const iconBase = (script && script.dataset.icons) || `${scriptBase}/ressources`;
+  const getScriptAttr = (name) => (script ? script.getAttribute(name) : null);
   const siteKey = `${location.protocol}//${location.host}`;
   const mailToDefault = (script && (script.dataset.mailto || script.dataset.email || script.dataset.to)) || '';
+  const startVisibleAttr =
+    getScriptAttr('isToolVisibleAtFirstLaunch') ||
+    getScriptAttr('istoolvisibleatfirstlaunch') ||
+    (script && (script.dataset.isToolVisibleAtFirstLaunch || script.dataset.istoolvisibleatfirstlaunch));
+  const startTopAttr =
+    getScriptAttr('isToolOnTopAtLaunch') ||
+    getScriptAttr('istoolontopatlaunch') ||
+    (script && (script.dataset.isToolOnTopAtLaunch || script.dataset.istoolontopatlaunch));
   const startHiddenAttr =
     script &&
     (script.dataset.hiddentoolbydefault ||
@@ -20,7 +29,39 @@
       script.dataset.collapsed ||
       script.dataset.startHidden ||
       '');
-  let position = (script && script.dataset.position) || 'bottom';
+  const globalHighlightColorAttr =
+    getScriptAttr('colorForHighlight') ||
+    getScriptAttr('colorForHighligh') ||
+    (script && (script.dataset.colorForHighlight || script.dataset.colorForHighligh));
+  const textHighlightColorAttr =
+    getScriptAttr('colorForTextHighligh') ||
+    getScriptAttr('colorForTextHighlight') ||
+    (script && (script.dataset.colorForTextHighligh || script.dataset.colorForTextHighlight));
+  const elementHighlightColorAttr =
+    getScriptAttr('colorForElementHighlight') ||
+    getScriptAttr('colorForElementHighligh') ||
+    (script && (script.dataset.colorForElementHighlight || script.dataset.colorForElementHighligh));
+  const defaultHighlightColor = '#4e9cf6';
+  const baseHighlightColor = normalizeHexColor(
+    globalHighlightColorAttr ||
+      elementHighlightColorAttr ||
+      textHighlightColorAttr ||
+      defaultHighlightColor,
+    defaultHighlightColor
+  );
+  const textHighlightColor = normalizeHexColor(textHighlightColorAttr || baseHighlightColor, baseHighlightColor);
+  const elementHighlightColor = normalizeHexColor(elementHighlightColorAttr || baseHighlightColor, baseHighlightColor);
+  const colorPalette = {
+    text: buildColorSet(textHighlightColor, { overlayAlpha: 0.7, softAlpha: 0.18, softerAlpha: 0.08 }),
+    element: buildColorSet(elementHighlightColor, { overlayAlpha: 0.35, softAlpha: 0.12, softerAlpha: 0.04 })
+  };
+  const initialPosition = (() => {
+    if (startTopAttr !== null && startTopAttr !== undefined) {
+      return parseBoolAttr(startTopAttr, false) ? 'top' : 'bottom';
+    }
+    return (script && script.dataset.position) || 'bottom';
+  })();
+  let position = initialPosition;
   const positionStorageKey = 'wn-toolbar-pos';
   const dockMode = (script && (script.dataset.dock || script.dataset.layout)) || '';
   const storageKey = `uxnote:site:${siteKey}`;
@@ -31,6 +72,26 @@
   const pendingFocusKey = `uxnote:pending:${siteKey}`;
   const analyticsSrc = 'https://cloud.umami.is/script.js';
   const analyticsWebsiteId = '9ba5fe24-9047-43b9-bdc6-c4113d1cf0a5';
+  const dimConfigAttr =
+    getScriptAttr('isBackdropVisible') ||
+    getScriptAttr('isbackdropvisible') ||
+    getScriptAttr('backdropVisible') ||
+    getScriptAttr('backdropvisible') ||
+    (script &&
+      (script.dataset.isBackdropVisible ||
+        script.dataset.isbackdropvisible ||
+        script.dataset.backdropVisible ||
+        script.dataset.backdropvisible ||
+        script.dataset.dim ||
+        script.dataset.dimpage ||
+        script.dataset.dimmer ||
+        script.dataset.overlay ||
+        script.dataset.dimLevel ||
+        script.dataset.dimlevel ||
+        script.dataset.dimstrength));
+  const defaultDimOpacity = 0.2;
+  const dimEnabled = parseBoolAttr(dimConfigAttr, true);
+  const dimOpacity = dimEnabled ? defaultDimOpacity : 0;
 
   // Central state (positions, annotations, DOM elements, filters...)
   const state = {
@@ -51,7 +112,12 @@
     exportModal: null,
     markerLayer: null,
     elementOutlines: {},
+    highlightRects: {},
+    colors: colorPalette,
     customPosition: false,
+    dimEnabled,
+    dimOpacity,
+    dimOverlay: null,
     filters: {
       priority: 'all',
       author: 'all',
@@ -71,14 +137,25 @@
     const savedPos = loadSavedPosition();
     if (savedPos) position = savedPos;
     const savedHidden = loadHiddenState();
-    state.hidden = savedHidden !== null ? savedHidden : parseBoolAttr(startHiddenAttr, false);
+    const initialHiddenFromVisible =
+      startVisibleAttr !== null && startVisibleAttr !== undefined
+        ? !parseBoolAttr(startVisibleAttr, true)
+        : null;
+    state.hidden =
+      savedHidden !== null
+        ? savedHidden
+        : initialHiddenFromVisible !== null
+        ? initialHiddenFromVisible
+        : parseBoolAttr(startHiddenAttr, false);
     state.annotatorName = loadAnnotatorName();
     state.annotatorNames = loadAnnotatorNames();
     state.importFiles = loadImportFiles();
     injectAnalytics();
     captureBasePadding();
+    applyColorTheme();
     injectStyles();
     createShell();
+    createDimmer();
     setAnnotatorVisibility(state.hidden);
     loadAnnotations();
     refreshKnownAnnotatorNames();
@@ -118,6 +195,17 @@
     style.setAttribute('data-wn-style', 'annotator');
     style.textContent = `
       .wn-annotator * { box-sizing: border-box; }
+      :root {
+        --wn-text-highlight: #4e9cf6;
+        --wn-text-highlight-overlay: rgba(78, 156, 246, 0.2);
+        --wn-text-highlight-soft: rgba(78, 156, 246, 0.12);
+        --wn-element-highlight: #4e9cf6;
+        --wn-element-highlight-soft: rgba(78, 156, 246, 0.12);
+        --wn-element-highlight-soft-end: rgba(78, 156, 246, 0.04);
+        --wn-element-highlight-strong: rgba(78, 156, 246, 0.9);
+        --wn-element-highlight-shadow: rgba(78, 156, 246, 0.24);
+        --wn-marker-text: #0b1622;
+      }
       .wn-annot-toolbar {
         --wn-accent: #6d56c7;
         --wn-bg: #f6f2fb;
@@ -319,6 +407,9 @@
         background: transparent !important;
         box-shadow: none !important;
         padding: 0 !important;
+        position: static !important;
+        z-index: auto !important;
+        pointer-events: none !important;
       }
       body.wn-annot-hidden .wn-annot-visibility-btn {
         opacity: 0.26;
@@ -565,9 +656,13 @@
         box-shadow: 0 4px 12px rgba(73, 64, 157, 0.12);
       }
       .wn-annot-item.is-focused {
-        border-color: rgba(48, 124, 246, 0.9);
-        box-shadow: 0 6px 16px rgba(48, 124, 246, 0.24);
-        background: linear-gradient(180deg, rgba(48, 124, 246, 0.08), rgba(48, 124, 246, 0.02));
+        border-color: var(--wn-item-accent-strong, var(--wn-element-highlight-strong));
+        box-shadow: 0 6px 16px var(--wn-item-accent-shadow, var(--wn-element-highlight-shadow));
+        background: linear-gradient(
+          180deg,
+          var(--wn-item-accent-soft, var(--wn-element-highlight-soft)),
+          var(--wn-item-accent-soft-end, var(--wn-element-highlight-soft-end))
+        );
         transform: translateY(-1px);
       }
       .wn-annot-card-top {
@@ -665,9 +760,9 @@
         height: 32px;
         padding: 0 10px;
         border-radius: 12px;
-        background: rgba(109, 86, 199, 0.12);
-        border: 1px solid rgba(109, 86, 199, 0.24);
-        color: #4b4557;
+        background: var(--wn-item-number-bg, rgba(109, 86, 199, 0.12));
+        border: 1px solid var(--wn-item-number-border, rgba(109, 86, 199, 0.24));
+        color: var(--wn-item-number-text, #000000);
         font-weight: 800;
         font-size: 12px;
         display: inline-flex;
@@ -753,11 +848,15 @@
         margin-top: 6px;
       }
       .wn-annot-highlight {
-        background: #ffee70;
-        box-shadow: 0 0 0 1px rgba(0,0,0,0.15);
-        padding: 0 2px;
-        border-radius: 3px;
+        display: inline;
+        background: var(--wn-text-highlight-overlay, rgba(78,156,246,0.2));
+        border: none;
+        box-shadow: none;
+        padding: 0;
+        border-radius: 2px;
         cursor: pointer;
+        position: relative;
+        z-index: 2147481800;
       }
       .wn-annot-marker-layer {
         position: fixed;
@@ -766,39 +865,43 @@
         width: 100%;
         height: 100%;
         pointer-events: none;
-        z-index: 2147482000;
+        z-index: 2147482400;
       }
       .wn-annot-marker {
         position: absolute;
-        width: 20px;
-        height: 20px;
+        width: 25px;
+        height: 25px;
         border-radius: 50%;
-        background: #4e9cf6;
-        color: #0b1622;
+        background: var(--wn-marker-bg, var(--wn-element-highlight));
+        color: var(--wn-marker-text, #0b1622);
         font-weight: 700;
         font-size: 11px;
+        z-index: 2;
         display: flex;
         align-items: center;
         justify-content: center;
         pointer-events: auto;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+        box-shadow: 0 10px 25px var(--wn-marker-shadow, rgba(0,0,0,0.25));
         cursor: pointer;
         transform: translate(-50%, -50%);
       }
-      .wn-annot-marker:hover { background: #72b3ff; }
+      .wn-annot-marker:hover { background: var(--wn-marker-bg, var(--wn-element-highlight)); filter: brightness(1.05); }
       .wn-annot-outline {
         position: absolute;
-        border: 2px dashed #4e9cf6;
-        background: rgba(78,156,246,0.1);
+        border: 2px dashed var(--wn-element-highlight, #4e9cf6);
+        background: var(--wn-element-highlight-soft, rgba(78,156,246,0.1));
         pointer-events: none;
-        z-index: 2147482500;
+        z-index: 2147482800;
       }
       .wn-annot-element-outline {
         position: absolute;
-        border: 2px dashed #4e9cf6;
-        background: rgba(78,156,246,0.08);
+        border: 2px dashed var(--wn-element-highlight, #4e9cf6);
+        background: var(--wn-element-highlight-soft, rgba(78,156,246,0.08));
         pointer-events: none;
-        z-index: 2147482495;
+        z-index: 2147482795;
+      }
+      .wn-annot-highlight-overlay {
+        display: none;
       }
       .wn-annot-tip {
         position: fixed;
@@ -817,6 +920,16 @@
         transition: opacity 0.2s ease, transform 0.2s ease;
       }
       .wn-annot-tip.show { opacity: 1; }
+      .wn-annot-dimmer {
+        position: fixed;
+        inset: 0;
+        background: rgba(18, 14, 32, var(--wn-dim-opacity, 0.2));
+        z-index: 2147481200;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+        pointer-events: none;
+      }
+      .wn-annot-dimmer.is-visible { opacity: 1; }
       .wn-annot-modal-backdrop {
         position: fixed;
         inset: 0;
@@ -1325,7 +1438,7 @@
     panel.innerHTML = `
       <div class="wn-annot-panel-head wn-annotator">
         <div class="wn-annot-panel-top wn-annotator">
-          <h3>Page annotations</h3>
+          <h3>Annotations (0)</h3>
           <button class="wn-annot-delete-all wn-annotator" type="button">
             ${iconTrash()}<span>All</span>
           </button>
@@ -1397,6 +1510,27 @@
     updateToggleActive();
     initFilters();
     createVisibilityToggle();
+  }
+
+  function updateDimmer() {
+    if (!state.dimOverlay) return;
+    state.dimOverlay.classList.toggle('is-visible', !state.hidden);
+  }
+
+  function createDimmer() {
+    if (!state.dimEnabled || state.dimOverlay) return;
+    const dimmer = document.createElement('div');
+    dimmer.className = 'wn-annot-dimmer';
+    dimmer.setAttribute('aria-hidden', 'true');
+    dimmer.style.setProperty('--wn-dim-opacity', String(state.dimOpacity));
+    const first = document.body.firstChild;
+    if (first) {
+      document.body.insertBefore(dimmer, first);
+    } else {
+      document.body.appendChild(dimmer);
+    }
+    state.dimOverlay = dimmer;
+    updateDimmer();
   }
 
   function mountVisibilityToggle() {
@@ -2100,7 +2234,7 @@
     const fileId = generateImportFileId();
 
     const normalized = annotations
-      .filter((ann) => ann && ann.type !== 'region')
+      .filter((ann) => ann && (ann.type === 'text' || ann.type === 'element'))
       .map((ann) =>
         normalizeImportedAnnotation(ann, {
           fallbackAuthor,
@@ -2449,6 +2583,110 @@
     }
   }
 
+  function applyColorTheme() {
+    if (!document || !document.documentElement) return;
+    const root = document.documentElement;
+    const palette = state.colors || colorPalette;
+    const setVar = (key, val) => {
+      if (!val) return;
+      root.style.setProperty(key, val);
+    };
+    const text = palette.text;
+    const elem = palette.element;
+    setVar('--wn-text-highlight', text.base);
+    setVar('--wn-text-highlight-overlay', text.overlay);
+    setVar('--wn-text-highlight-soft', text.soft);
+    setVar('--wn-element-highlight', elem.base);
+    setVar('--wn-element-highlight-soft', elem.soft);
+    setVar('--wn-element-highlight-soft-end', elem.softer);
+    setVar('--wn-element-highlight-strong', elem.strong);
+    setVar('--wn-element-highlight-shadow', elem.shadow);
+    setVar('--wn-marker-text', elem.text);
+  }
+
+  function buildColorSet(hexColor, opts = {}) {
+    const base = normalizeHexColor(hexColor, '#000000');
+    const softAlpha = opts.softAlpha ?? 0.12;
+    const softerAlpha = opts.softerAlpha ?? 0.04;
+    const overlayAlpha = opts.overlayAlpha ?? 0.7;
+    return {
+      base,
+      overlay: rgbaFromHex(base, overlayAlpha, rgbaFromHex('#000000', overlayAlpha)),
+      soft: rgbaFromHex(base, softAlpha, rgbaFromHex('#000000', softAlpha)),
+      softer: rgbaFromHex(base, softerAlpha, rgbaFromHex('#000000', softerAlpha)),
+      strong: rgbaFromHex(base, 0.9, base),
+      shadow: rgbaFromHex(base, 0.24, 'rgba(0,0,0,0.24)'),
+      pill: rgbaFromHex(base, 0.16, 'rgba(0,0,0,0.16)'),
+      pillBorder: rgbaFromHex(base, 0.28, 'rgba(0,0,0,0.28)'),
+      text: getReadableTextColor(base)
+    };
+  }
+
+  function normalizeHexColor(val, fallback) {
+    const parsed = parseHexColor(val);
+    if (parsed) return parsed;
+    return parseHexColor(fallback) || '#000000';
+  }
+
+  function parseHexColor(val) {
+    if (!val || typeof val !== 'string') return null;
+    const v = val.trim();
+    const match = v.match(/^#?([0-9a-f]{3}|[0-9a-f]{6})$/i);
+    if (!match) return null;
+    const hex = match[1];
+    const full = hex.length === 3 ? hex.split('').map((c) => c + c).join('') : hex;
+    return `#${full.toLowerCase()}`;
+  }
+
+  function hexToRgb(hex) {
+    const clean = parseHexColor(hex);
+    if (!clean) return null;
+    const int = parseInt(clean.slice(1), 16);
+    return {
+      r: (int >> 16) & 255,
+      g: (int >> 8) & 255,
+      b: int & 255
+    };
+  }
+
+  function rgbaFromHex(hex, alpha = 1, fallback = '') {
+    const rgb = hexToRgb(hex);
+    if (!rgb) return fallback || '';
+    const a = typeof alpha === 'number' && alpha >= 0 && alpha <= 1 ? alpha : 1;
+    return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${a})`;
+  }
+
+  function getReadableTextColor(hex) {
+    const rgb = hexToRgb(hex);
+    if (!rgb) return '#0b1622';
+    const luminance = 0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b;
+    return luminance > 160 ? '#0b1622' : '#ffffff';
+  }
+
+  function getAnnotationColors(annotation) {
+    const palette = state.colors || colorPalette;
+    return annotation && annotation.type === 'text' ? palette.text : palette.element;
+  }
+
+  function applyMarkerPalette(marker, palette) {
+    if (!marker || !palette) return;
+    marker.style.setProperty('--wn-marker-bg', palette.base);
+    marker.style.setProperty('--wn-marker-text', palette.text);
+    marker.style.setProperty('--wn-marker-shadow', palette.shadow);
+  }
+
+  function applyItemAccent(item, palette) {
+    if (!item || !palette) return;
+    item.style.setProperty('--wn-item-accent', palette.base);
+    item.style.setProperty('--wn-item-accent-strong', palette.strong);
+    item.style.setProperty('--wn-item-accent-shadow', palette.shadow);
+    item.style.setProperty('--wn-item-accent-soft', palette.soft);
+    item.style.setProperty('--wn-item-accent-soft-end', palette.softer);
+    item.style.setProperty('--wn-item-number-bg', palette.pill);
+    item.style.setProperty('--wn-item-number-border', palette.pillBorder);
+    item.style.setProperty('--wn-item-number-text', '#000000');
+  }
+
   function parseBoolAttr(val, fallback = false) {
     if (val === undefined || val === null || val === '') return fallback;
     const v = String(val).toLowerCase();
@@ -2589,7 +2827,7 @@
     try {
       const stored = localStorage.getItem(storageKey);
       const parsed = stored ? JSON.parse(stored) : [];
-      state.annotations = (parsed || []).filter((ann) => ann.type !== 'region');
+      state.annotations = (parsed || []).filter((ann) => ann.type === 'text' || ann.type === 'element');
       // Backward compatibility: add pageKey if missing
       state.annotations.forEach((ann) => {
         if (!ann.pageKey) {
@@ -2660,6 +2898,7 @@
       hideOutline();
     }
     syncVisibilityButton();
+    updateDimmer();
     positionVisibilityToggle();
     applyPageOffset();
     if (!hidden) {
@@ -2668,6 +2907,7 @@
       positionTip();
       // BMC widget intentionally left independent of visibility toggle
     }
+    document.dispatchEvent(new CustomEvent('uxnote:visibility', { detail: { hidden } }));
   }
 
   function syncVisibilityButton() {
@@ -2904,8 +3144,6 @@
     setMode(null, { keepOutline: true });
   }
 
-  // Region tool removed
-
   function unwrapHighlightSpan(span) {
     const parent = span && span.parentNode;
     if (!parent) return;
@@ -2931,6 +3169,10 @@
       });
     });
     state.highlightSpans = {};
+    Object.values(state.highlightRects || {}).forEach((rect) => {
+      if (rect && rect.parentNode) rect.parentNode.removeChild(rect);
+    });
+    state.highlightRects = {};
     if (state.markerLayer) {
       state.markerLayer.innerHTML = '';
     }
@@ -2947,6 +3189,10 @@
       markerEntry.el.parentNode.removeChild(markerEntry.el);
     }
     delete state.markers[id];
+    if (state.highlightRects[id] && state.highlightRects[id].parentNode) {
+      state.highlightRects[id].parentNode.removeChild(state.highlightRects[id]);
+    }
+    delete state.highlightRects[id];
 
     if (state.elementOutlines[id] && state.elementOutlines[id].parentNode) {
       state.elementOutlines[id].parentNode.removeChild(state.elementOutlines[id]);
@@ -3165,10 +3411,13 @@
     marker.className = 'wn-annot-marker wn-annotator';
     marker.textContent = state.annotations.findIndex((a) => a.id === annotation.id) + 1;
     marker.dataset.wnAnnotId = annotation.id;
+    const palette = getAnnotationColors(annotation);
+    applyMarkerPalette(marker, palette);
     positionMarker(marker, rect, annotation);
     marker.addEventListener('click', () => focusAnnotation(annotation.id));
     state.markerLayer.appendChild(marker);
     state.markers[annotation.id] = { el: marker, rect };
+    ensureHighlightOverlay(annotation, rect, palette);
 
     if (annotation.type === 'element') {
       ensureElementOutline(annotation);
@@ -3216,6 +3465,25 @@
     return { x: -index * gap, y: 0 };
   }
 
+  function ensureHighlightOverlay(annotation, rect, palette) {
+    if (!state.markerLayer || annotation.type !== 'text' || !rect) return;
+    const colors = palette || getAnnotationColors(annotation);
+    let overlay = state.highlightRects[annotation.id];
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.className = 'wn-annot-highlight-overlay wn-annotator';
+      overlay.dataset.wnAnnotId = annotation.id;
+      state.markerLayer.appendChild(overlay);
+      state.highlightRects[annotation.id] = overlay;
+    }
+    overlay.style.left = `${rect.x}px`;
+    overlay.style.top = `${rect.y}px`;
+    overlay.style.width = `${rect.w}px`;
+    overlay.style.height = `${rect.h}px`;
+    overlay.style.background = colors.overlay;
+    overlay.style.boxShadow = `0 0 0 1px ${colors.base}`;
+  }
+
   function ensureElementOutline(annotation) {
     try {
       const el = annotation.target?.xpath ? findNodeByXPath(annotation.target.xpath) : null;
@@ -3248,9 +3516,13 @@
       if (!rect) return;
       entry.rect = rect;
       positionMarker(entry.el, rect, ann);
+      applyMarkerPalette(entry.el, getAnnotationColors(ann));
 
       if (ann.type === 'element') {
         ensureElementOutline(ann);
+      }
+      if (ann.type === 'text') {
+        ensureHighlightOverlay(ann, rect, getAnnotationColors(ann));
       }
     });
   }
@@ -3299,21 +3571,23 @@
       const span = spans[0];
       if (span) {
         span.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        flash(span);
+        flash(span, getAnnotationColors(ann).base);
       }
     } else if (ann.type === 'element') {
       const el = ann.target?.xpath ? findNodeByXPath(ann.target.xpath) : null;
       if (el && el.scrollIntoView) {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        flash(el);
+        flash(el, getAnnotationColors(ann).base);
       }
     }
   }
 
-  function flash(el) {
+  function flash(el, accentColor) {
     el.style.transition = 'box-shadow 0.2s ease';
     const prev = el.style.boxShadow;
-    el.style.boxShadow = '0 0 0 3px rgba(78,156,246,0.6)';
+    const accent = accentColor || (state.colors?.element?.base || '#4e9cf6');
+    const flashColor = rgbaFromHex(accent, 0.6, 'rgba(78,156,246,0.6)');
+    el.style.boxShadow = `0 0 0 3px ${flashColor}`;
     setTimeout(() => {
       el.style.boxShadow = prev;
     }, 800);
@@ -3348,7 +3622,7 @@
         empty.className = 'wn-annot-empty';
       empty.textContent = 'No annotations yet.';
       list.appendChild(empty);
-      if (title) title.textContent = 'Page annotations (0)';
+      if (title) title.textContent = 'Annotations (0)';
       const footer = ensureFooter();
       return;
     }
@@ -3365,11 +3639,12 @@
         const authorOk = authorFilter === 'all' || authorValue === authorFilter;
     return prioOk && searchOk && authorOk;
   });
-    if (title) title.textContent = `Page annotations (${filtered.length})`;
+    if (title) title.textContent = `Annotations (${filtered.length})`;
     filtered.forEach((ann, idx) => {
       const item = document.createElement('div');
       item.className = 'wn-annot-item';
       item.dataset.id = ann.id;
+      applyItemAccent(item, getAnnotationColors(ann));
 
       const priority = ann.priority || 'medium';
       const priorityLabel = priority === 'high' ? 'High' : priority === 'low' ? 'Low' : 'Medium';
@@ -3729,6 +4004,9 @@
   document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', init) : init();
 
   window.Uxnote = {
-    refresh: refreshMarkers
+    refresh: refreshMarkers,
+    setHidden: (hidden) => setAnnotatorVisibility(!!hidden),
+    toggleVisibility: () => setAnnotatorVisibility(!state.hidden),
+    isHidden: () => !!state.hidden
   };
 })();

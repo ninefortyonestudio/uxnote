@@ -4,8 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Uxnote – Annotate and track your pages</title>
-  <script defer src="https://cloud.umami.is/script.js" data-website-id="1972cd9a-9c89-456f-9417-9b4dabf47380"></script>
-  <link rel="stylesheet" href="css/uxnote-landing.css">
+  <link rel="stylesheet" href="assets/uxnote-landing.css">
 </head>
 <body>
   <header>
@@ -14,6 +13,10 @@
         <img class="brand-logo" src="./uxnote-tool/ressources/uxnote-logo.svg" alt="Uxnote logo">
       </div>
       <div class="nav-links">
+        <div class="lang-switch" role="group" aria-label="Language">
+          <button class="lang-btn" type="button" data-lang="en">EN</button>
+          <button class="lang-btn" type="button" data-lang="fr">FR</button>
+        </div>
       <script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js" data-name="bmc-button" data-slug="ninefortyonestudio" data-color="#6d56c7" data-emoji="" data-font="Cookie" data-text="&nbsp;Buy me a coffee" data-outline-color="#000000" data-font-color="#ffffff" data-coffee-color="#FFDD00" ></script>
       </div>
     </nav>
@@ -22,10 +25,10 @@
   <section class="hero">
     <div class="hero-grid">
       <div class="hero-copy">
-        <h1>The annotation bar for your mockups and websites.</h1>
-        <p>Turn any web page into a review surface: highlights, comments, visual feedback—no plugin or backend needed. Works on GitHub Pages, WordPress, staging, prototypes, client sites—even local sites.</p>
+        <h1 data-i18n="hero_title">The annotation bar for your mockups and websites.</h1>
+        <p data-i18n="hero_sub">Drop a single script and get text highlights, element pins, numbered cards, color-theming, dimmed focus, import/export, and email handoff—no plugin or backend.</p>
         <div class="badges">
-          <a class="btn" href="#install">Install UxNote</a>
+          <a class="btn" href="#install" data-i18n="hero_cta">Install UxNote</a>
         </div>
       </div>
       <div class="hero-visual">
@@ -37,7 +40,7 @@
                   <span class="dot amber"></span>
                   <span class="dot green"></span>
               </div>
-              <div class="demo-status-pill" id="demo-status">Demo off (toolbar not loaded)</div>
+              <div class="demo-status-pill" id="demo-status">Demo off</div>
             </div>
               <div class="demo-content">
                 <div class="demo-left">
@@ -69,7 +72,6 @@
             <div class="demo-toolbar-preview">
               <span class="tool pen"><img src="./uxnote-tool/ressources/uxnote-icon-pen.svg" alt="Highlight tool"></span>
               <span class="tool"><img src="./uxnote-tool/ressources/uxnote-icon-target.svg" alt="Element tool"></span>
-              <span class="tool"><img src="./uxnote-tool/ressources/uxnote-icon-rect.svg" alt="Region tool"></span>
             </div>
           </div>
           <button class="demo-footer-btn" id="demo-btn-3">Live preview</button>
@@ -79,109 +81,661 @@
   </section>
 
   <section class="section" id="why">
-    <h2>Who and why?</h2>
+    <h2 data-i18n="who_title">Who and why?</h2>
     <div class="cards">
-      <div class="card"><h3>Agencies & freelancers</h3><p>No more vague emails or improvised screenshots: clients comment directly on the page, you export everything in one clean file.</p></div>
-      <div class="card"><h3>Product & UX teams</h3><p>Review where the interfaces live: in the browser. Uxnote adds notes and highlights without touching existing code.</p></div>
+      <div class="card"><h3 data-i18n="who_card1_title">Agencies & freelancers</h3><p data-i18n="who_card1_body">No more vague emails or improvised screenshots: clients comment directly on the page, you export everything in one clean file.</p></div>
+      <div class="card"><h3 data-i18n="who_card2_title">Product & UX teams</h3><p data-i18n="who_card2_body">Review where the interfaces live: in the browser. Uxnote adds notes and highlights without touching existing code.</p></div>
     </div>
   </section>
 
   <section class="section" id="features">
-    <h2>Core features</h2>
+    <h2 data-i18n="features_title">Core features</h2>
     <div class="cards">
-      <div class="card"><h3>Capture modes</h3><p>Text, element, free area with priorities, collapsible snippets, and numbered badges.</p></div>
-      <div class="card"><h3>Site-wide</h3><p>Global list for the whole domain, jump-to opens the page and centers the annotation.</p></div>
-      <div class="card"><h3>Import / Export / Mail</h3><p>Single JSON (title + date), import with full re-render, email sending for sharing with devs.</p></div>
+      <div class="card"><h3 data-i18n="features_card1_title">Capture modes</h3><p data-i18n="features_card1_body">Highlight text or pin any element; numbered badges, priorities, and clickable snippets for jump-to.</p></div>
+      <div class="card"><h3 data-i18n="features_card2_title">Focus & theming</h3><p data-i18n="features_card2_body">Built-in 20% dim overlay (toggleable), unified highlight color or per-type colors, panel/marker styling follows your choice.</p></div>
+      <div class="card"><h3 data-i18n="features_card3_title">Import / Export / Mail</h3><p data-i18n="features_card3_body">Single JSON (title + date), re-import to re-render, email sending for sharing with devs.</p></div>
+    </div>
+  </section>
+
+  <section class="section" id="how">
+    <h2 data-i18n="how_title">How it works?</h2>
+    <div class="steps install-steps">
+      <div class="step"><div class="num">1</div><h3 data-i18n="install_step1_title">Inject</h3><p data-i18n="install_step1_body">Paste the snippet on each page (or via a global tag manager).</p></div>
+      <div class="step"><div class="num">2</div><h3 data-i18n="install_step2_title">Share</h3><p data-i18n="install_step2_body">Send the URL to your client (optionally add <code>?uxnote=1</code> to flag review mode).</p></div>
+      <div class="step"><div class="num">3</div><h3 data-i18n="install_step3_title">Annotate</h3><p data-i18n="install_step3_body">Clients highlight and comment on text or elements; everything shows in the Uxnote panel.</p></div>
+      <div class="step"><div class="num">4</div><h3 data-i18n="install_step4_title">Export / Mail</h3><p data-i18n="install_step4_body">Dev side: click “Export” (JSON) or “Mail” to collect and process feedback.</p></div>
     </div>
   </section>
 
   <section class="section" id="install">
-    <h2>Install (copy / paste)</h2>
-    <p class="lead">Drop Uxnote right before <code>&lt;/body&gt;</code> on each page you want to annotate:</p>
-    <div class="code-block">
-&lt;script src="https://uxnote.ninefortyone.studio/uxnote-tool/uxnote.js"&gt;&lt;/script&gt;
+    <h2 data-i18n="install_title">Install (copy / paste)</h2>
+    <div class="install-head">
+      <div id="install-text-default">
+        <h3 class="install-subtitle" data-i18n="install_default_title">Default install</h3>
+        <p class="lead" data-i18n="install_lead1">Default installation: drop Uxnote right before <code>&lt;/body&gt;</code> on each page you want to annotate:</p>
+      </div>
+      <div id="install-text-custom" hidden>
+        <h3 class="install-subtitle" data-i18n="install_custom_title">Custom install</h3>
+        <p class="lead" data-i18n="install_lead_custom_full">Custom installation: generate your script tag with options and drop Uxnote right before <code>&lt;/body&gt;</code> on each page you want to annotate:</p>
+      </div>
+      <button type="button" class="btn tertiary" id="install-toggle" aria-pressed="false" data-i18n="install_toggle_custom">Add options</button>
     </div>
-    <p class="lead">Optional attributes on the script tag:</p>
-    <div class="code-block">
-&lt;script
-  src="https://uxnote.ninefortyone.studio/uxnote-tool/uxnote.js"
-  data-mailto="team@example.com"
-  data-hiddentoolbydefault="true"
-&gt;&lt;/script&gt;
+    <div id="install-default">
+      <div class="code-copy">
+        <div class="code-block">
+<pre><code id="default-code">&lt;script src="https://uxnote.ninefortyone.studio/uxnote-tool/uxnote.js"&gt;&lt;/script&gt;</code></pre>
+        </div>
+        <button type="button" class="copy-btn" id="default-copy" data-i18n="builder_copy">Copy</button>
+      </div>
+      <div class="builder-status" id="default-status" aria-live="polite"></div>
     </div>
-    <div class="steps install-steps">
-      <div class="step"><div class="num">•</div><h3>data-mailto</h3><p>Pre-fills the <code>mailto:</code> recipient when clicking “Send by email”.</p></div>
-      <div class="step"><div class="num">•</div><h3>data-hiddentoolbydefault</h3><p>Load the toolbar hidden on first view (<code>true</code>/<code>false</code>); visibility persists per site in local storage.</p></div>
-    </div>
-    <div class="steps install-steps">
-      <div class="step"><div class="num">1</div><h3>Inject</h3><p>Paste the snippet on each page (or via a global tag manager).</p></div>
-      <div class="step"><div class="num">2</div><h3>Share</h3><p>Send the URL to your client (optionally add <code>?uxnote=1</code> to flag review mode).</p></div>
-      <div class="step"><div class="num">3</div><h3>Annotate</h3><p>Clients highlight, comment on text/element/area; everything shows in the Uxnote panel.</p></div>
-      <div class="step"><div class="num">4</div><h3>Export / Mail</h3><p>Dev side: click “Export” (JSON) or “Mail” to collect and process feedback.</p></div>
+    <div class="install-custom-panel" id="install-custom" hidden>
+      <div class="options-builder" id="options-builder">
+        <div class="builder-grid">
+          <form class="builder-form" id="uxnote-builder-form">
+            <div class="builder-row builder-color-block" id="builder-color-block">
+              <div class="card-head">
+                <div class="builder-color-head-left">
+                  <label class="builder-include" for="builder-color-include">
+                    <input type="checkbox" id="builder-color-include">
+                    <span class="sr-only" data-i18n="builder_include">Include</span>
+                  </label>
+                  <div class="builder-color-toggle">
+                    <label class="builder-inline-toggle">
+                      <input type="checkbox" id="builder-color-advanced-toggle">
+                      <span data-i18n="builder_advanced_toggle">Use advanced colors</span>
+                    </label>
+                  </div>
+                </div>
+                <span class="builder-help" data-i18n-title="install_opt_color_body" aria-label="?">?</span>
+              </div>
+              <div class="builder-color-body builder-color-field" id="builder-color-field">
+                <div class="builder-color-line builder-color-unified" id="builder-color-unified">
+                  <div class="builder-color-text">
+                    <div class="builder-name-row">
+                      <span class="builder-name">colorForHighlight</span>
+                    </div>
+                    <span class="builder-desc" data-i18n="builder_color_desc">Unified highlight color (hex).</span>
+                  </div>
+                  <div class="builder-color-inputs">
+                    <input type="color" id="builder-color" value="#4e9cf6" aria-label="colorForHighlight">
+                    <input type="text" id="builder-color-text" value="#4e9cf6" maxlength="7">
+                  </div>
+                </div>
+                <div class="builder-color-line builder-color-advanced" id="builder-color-advanced-fields" hidden>
+                  <div class="builder-color-subrow">
+                    <div class="builder-color-text">
+                      <span class="builder-sub-label">colorForTextHighlight</span>
+                      <span class="builder-desc" data-i18n="builder_text_color_desc">Text-only highlight color.</span>
+                    </div>
+                    <div class="builder-color-inputs">
+                      <input type="color" id="builder-text-color" value="#4e9cf6" aria-label="colorForTextHighlight">
+                      <input type="text" id="builder-text-color-text" value="#4e9cf6" maxlength="7">
+                    </div>
+                  </div>
+                  <div class="builder-color-subrow">
+                    <div class="builder-color-text">
+                      <span class="builder-sub-label">colorForElementHighlight</span>
+                      <span class="builder-desc" data-i18n="builder_element_color_desc">Element-only highlight color.</span>
+                    </div>
+                    <div class="builder-color-inputs">
+                      <input type="color" id="builder-element-color" value="#4e9cf6" aria-label="colorForElementHighlight">
+                      <input type="text" id="builder-element-color-text" value="#4e9cf6" maxlength="7">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="builder-option-cards">
+              <div class="builder-card" id="builder-card-backdrop">
+                <div class="card-head">
+                  <label class="builder-include" for="builder-backdrop-enabled">
+                    <input type="checkbox" id="builder-backdrop-enabled">
+                    <span class="sr-only" data-i18n="builder_include">Include</span>
+                  </label>
+                  <span class="builder-help" data-i18n-title="install_opt_backdrop_body" aria-label="?">?</span>
+                </div>
+                <div class="builder-name-row"><span class="builder-name">isBackdropVisible</span></div>
+                <p class="builder-desc" data-i18n="builder_backdrop_desc">Dim overlay behind annotations.</p>
+                <div class="builder-field">
+                  <select id="builder-backdrop-value" aria-label="isBackdropVisible">
+                    <option value="true" selected>true</option>
+                    <option value="false">false</option>
+                  </select>
+                </div>
+              </div>
+              <div class="builder-card" id="builder-card-visible">
+                <div class="card-head">
+                  <label class="builder-include" for="builder-visible-enabled">
+                    <input type="checkbox" id="builder-visible-enabled">
+                    <span class="sr-only" data-i18n="builder_include">Include</span>
+                  </label>
+                  <span class="builder-help" data-i18n-title="install_opt_visible_body" aria-label="?">?</span>
+                </div>
+                <div class="builder-name-row"><span class="builder-name">isToolVisibleAtFirstLaunch</span></div>
+                <p class="builder-desc" data-i18n="builder_visible_desc">Toolbar visible on first load.</p>
+                <div class="builder-field">
+                  <select id="builder-visible-value" aria-label="isToolVisibleAtFirstLaunch">
+                    <option value="true" selected>true</option>
+                    <option value="false">false</option>
+                  </select>
+                </div>
+              </div>
+              <div class="builder-card" id="builder-card-top">
+                <div class="card-head">
+                  <label class="builder-include" for="builder-top-enabled">
+                    <input type="checkbox" id="builder-top-enabled">
+                    <span class="sr-only" data-i18n="builder_include">Include</span>
+                  </label>
+                  <span class="builder-help" data-i18n-title="install_opt_top_body" aria-label="?">?</span>
+                </div>
+                <div class="builder-name-row"><span class="builder-name">isToolOnTopAtLaunch</span></div>
+                <p class="builder-desc" data-i18n="builder_top_desc">Toolbar position on first load.</p>
+                <div class="builder-field">
+                  <select id="builder-top-value" aria-label="isToolOnTopAtLaunch">
+                    <option value="true" selected>true</option>
+                    <option value="false">false</option>
+                  </select>
+                </div>
+              </div>
+              <div class="builder-card" id="builder-card-mailto">
+                <div class="card-head">
+                  <label class="builder-include" for="builder-mailto-enabled">
+                    <input type="checkbox" id="builder-mailto-enabled">
+                    <span class="sr-only" data-i18n="builder_include">Include</span>
+                  </label>
+                  <span class="builder-help" data-i18n-title="install_opt_mailto_body" aria-label="?">?</span>
+                </div>
+                <div class="builder-name-row"><span class="builder-name">data-mailto</span></div>
+                <p class="builder-desc" data-i18n="builder_mailto_desc">Recipient for the email export.</p>
+                <div class="builder-field">
+                  <input type="email" id="builder-mailto" placeholder="team@example.com">
+                </div>
+              </div>
+            </div>
+          </form>
+
+          <div class="builder-output">
+            <div class="code-copy">
+              <div class="code-block"><pre><code id="builder-output"></code></pre></div>
+              <button type="button" class="copy-btn" id="builder-copy" data-i18n="builder_copy">Copy</button>
+            </div>
+            <div class="builder-status" id="builder-status" aria-live="polite"></div>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
+  <section class="section" id="faq">
+    <h2 data-i18n="faq_title">FAQ</h2>
+    <div class="faq-grid">
+      <details class="faq-item">
+        <summary data-i18n="faq_q1">Where should the script tag be placed?</summary>
+        <p data-i18n="faq_a1">Place it right before <code>&lt;/body&gt;</code> so the DOM is ready. If you must place it in <code>&lt;head&gt;</code>, add <code>defer</code>.</p>
+      </details>
+      <details class="faq-item">
+        <summary data-i18n="faq_q2">How are annotations stored and scoped?</summary>
+        <p data-i18n="faq_a2">Annotations are stored in <code>localStorage</code> for the current origin. Each page URL keeps its own set, and clearing storage removes them.</p>
+      </details>
+      <details class="faq-item">
+        <summary data-i18n="faq_q3">Can we export, import, and merge reviews?</summary>
+        <p data-i18n="faq_a3">Yes. Export generates a JSON file. Import appends annotations so you can consolidate feedback from multiple reviewers.</p>
+      </details>
+      <details class="faq-item">
+        <summary data-i18n="faq_q4">Does it work on staging, previews, or localhost?</summary>
+        <p data-i18n="faq_a4">Yes, as long as the script loads and the browser allows <code>localStorage</code> in that environment.</p>
+      </details>
+      <details class="faq-item">
+        <summary data-i18n="faq_q5">How do we customize colors, dim, and toolbar position?</summary>
+        <p data-i18n="faq_a5">Use script tag options like <code>colorForHighlight</code> (or <code>colorForTextHighlight</code> + <code>colorForElementHighlight</code>), <code>isBackdropVisible</code>, <code>isToolOnTopAtLaunch</code>, and <code>isToolVisibleAtFirstLaunch</code>.</p>
+      </details>
+      <details class="faq-item">
+        <summary data-i18n="faq_q6">Is any data sent to a server?</summary>
+        <p data-i18n="faq_a6">No. Everything stays in the browser unless you export a JSON file or send annotations by email.</p>
+      </details>
+      <details class="faq-item">
+        <summary data-i18n="faq_q7">Can we use it on single-page apps?</summary>
+        <p data-i18n="faq_a7">Yes. Annotations are stored per URL. In an SPA, route changes do not always trigger a full reload, so you may need to reload or re-initialize to render annotations for the new URL.</p>
+      </details>
+      <details class="faq-item">
+        <summary data-i18n="faq_q8">Will a strict CSP block Uxnote?</summary>
+        <p data-i18n="faq_a8">CSP (Content Security Policy) is a browser security header that restricts script and style sources. If it is strict, allow the Uxnote script origin and inline styles (or use a nonce/hash) so the toolbar and highlights can render.</p>
+      </details>
+    </div>
+  </section>
+
+  <div class="demo-pointer" id="demo-pointer" hidden aria-hidden="true">
+    <span class="demo-pointer-label">Demo</span>
+    <span class="demo-pointer-arrow" aria-hidden="true"></span>
+  </div>
+
   <footer class="footer"><a href="https://ninefortyone.studio" target="_blank" rel="noreferrer noopener">© UxNote – by NineFortyOne.Studio</a></footer>
 
+  <script src="./uxnote-tool/uxnote.js" isBackdropVisible="true" isToolVisibleAtFirstLaunch="false" isToolOnTopAtLaunch="false"></script>
+  <script src="assets/langues.js"></script>
+  
   <script>
-    const statusEl = document.getElementById('demo-status');
+    const i18n = window.UxnoteI18n || null;
+    const fallbackText = {
+      demo_status_off: 'Demo off',
+      demo_status_active: 'Demo active',
+      demo_status_fail: 'Demo unavailable',
+      demo_button_live: 'Live preview',
+      demo_button_close: 'Close preview',
+      builder_copied: 'Copied to clipboard.',
+      builder_copy_fail: 'Copy failed. Please copy manually.'
+    };
+    const byId = (id) => document.getElementById(id);
+    const statusEl = byId('demo-status');
     const demoButtons = ['demo-btn', 'demo-btn-2', 'demo-btn-3']
       .map((id) => document.getElementById(id))
       .filter(Boolean);
     let previewActive = false;
-    let scriptLoaded = false;
+    let statusKey = 'demo_status_off';
 
-    const setStatus = (text) => {
-      if (statusEl) statusEl.textContent = text;
+  const t = (key) => {
+    if (i18n && typeof i18n.t === 'function') return i18n.t(key);
+    return fallbackText[key] || key;
+  };
+
+    const setStatus = (key) => {
+      statusKey = key;
+      if (statusEl) statusEl.textContent = t(key);
     };
+
     const updateButtons = () => {
-      demoButtons.forEach((btn) => (btn.textContent = previewActive ? 'Close preview' : 'Live preview'));
+      const label = previewActive ? t('demo_button_close') : t('demo_button_live');
+      demoButtons.forEach((btn) => (btn.textContent = label));
     };
-    const toggleAnnotatorDisplay = (show) => {
-      document.querySelectorAll('.wn-annotator').forEach((el) => {
-        el.style.display = show ? '' : 'none';
+
+    function initInstallToggle() {
+      const toggleBtn = byId('install-toggle');
+      const defaultBlock = byId('install-default');
+      const customBlock = byId('install-custom');
+      const defaultText = byId('install-text-default');
+      const customText = byId('install-text-custom');
+      const installSection = document.getElementById('install');
+      if (!toggleBtn || !defaultBlock || !customBlock) return;
+      let customMode = false;
+      const sync = () => {
+        defaultBlock.hidden = customMode;
+        customBlock.hidden = !customMode;
+        if (defaultText) defaultText.hidden = customMode;
+        if (customText) customText.hidden = !customMode;
+        toggleBtn.textContent = t(customMode ? 'install_toggle_default' : 'install_toggle_custom');
+        toggleBtn.setAttribute('aria-pressed', customMode ? 'true' : 'false');
+      };
+      toggleBtn.addEventListener('click', () => {
+        customMode = !customMode;
+        sync();
+        if (installSection && typeof installSection.scrollIntoView === 'function') {
+          installSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
       });
-      document.querySelectorAll('.wn-annot-highlight').forEach((span) => {
-        span.style.backgroundColor = show ? '' : 'transparent';
-        span.style.boxShadow = show ? '' : 'none';
-      });
+      sync();
+    }
+
+  if (i18n && typeof i18n.onChange === 'function') {
+    i18n.onChange(() => {
+      updateButtons();
+      setStatus(statusKey);
+      initInstallToggle();
+    });
+  }
+
+    const syncFromUxnote = () => {
+      if (!window.Uxnote || typeof window.Uxnote.isHidden !== 'function') return;
+      previewActive = !window.Uxnote.isHidden();
+      updateButtons();
+      setStatus(previewActive ? 'demo_status_active' : 'demo_status_off');
     };
 
     const loadDemo = () => {
-      if (previewActive) {
-        toggleAnnotatorDisplay(false);
-        previewActive = false;
-        setStatus('Demo off (toolbar not loaded)');
-        updateButtons();
+      if (!window.Uxnote || typeof window.Uxnote.toggleVisibility !== 'function') {
+        setStatus('demo_status_fail');
         return;
       }
-      // If script already loaded, just show elements
-      if (scriptLoaded || window.Uxnote || document.querySelector('script[data-uxnote-loaded]')) {
-        toggleAnnotatorDisplay(true);
-        previewActive = true;
-        setStatus('Demo active');
-        updateButtons();
-        return;
-      }
-      const s = document.createElement('script');
-      s.src = './uxnote-tool/uxnote.js';
-      s.dataset.uxnoteLoaded = 'true';
-      s.onload = () => {
-        scriptLoaded = true;
-        previewActive = true;
-        setStatus('Demo active');
-        updateButtons();
-      };
-      s.onerror = () => {
-        setStatus('Script failed to load');
-      };
-      document.body.appendChild(s);
-      setStatus('Loading...');
-      updateButtons();
+      window.Uxnote.toggleVisibility();
     };
 
-    updateButtons();
+    const demoPointerKey = 'uxnote:demo-pointer-dismissed';
+    const demoPointer = byId('demo-pointer');
+    const getEyeButton = () => document.querySelector('.wn-annot-visibility-btn');
+    const isDemoPointerDismissed = () => {
+      try {
+        return localStorage.getItem(demoPointerKey) === '1';
+      } catch (err) {
+        return false;
+      }
+    };
+    const dismissDemoPointer = () => {
+      if (!demoPointer) return;
+      demoPointer.hidden = true;
+      try {
+        localStorage.setItem(demoPointerKey, '1');
+      } catch (err) {
+        // ignore
+      }
+    };
+    const updateDemoPointerPosition = () => {
+      if (!demoPointer || demoPointer.hidden) return;
+      const btn = getEyeButton();
+      if (!btn) return;
+      const rect = btn.getBoundingClientRect();
+      const top = rect.top - 20;
+      const left = rect.left + rect.width / 2;
+      demoPointer.style.left = `${left}px`;
+      demoPointer.style.top = `${top}px`;
+    };
+    const initDemoPointer = () => {
+      if (!demoPointer || isDemoPointerDismissed()) {
+        if (demoPointer) demoPointer.hidden = true;
+        return;
+      }
+      const btn = getEyeButton();
+      if (!btn) {
+        requestAnimationFrame(initDemoPointer);
+        return;
+      }
+      demoPointer.hidden = false;
+      updateDemoPointerPosition();
+      if (!btn.dataset.demoPointerBound) {
+        btn.dataset.demoPointerBound = 'true';
+        btn.addEventListener('click', dismissDemoPointer, { once: true });
+      }
+    };
+
+    const initBuilder = () => {
+      const builder = document.getElementById('options-builder');
+      if (!builder) return;
+
+      const output = byId('builder-output');
+      const status = byId('builder-status');
+      const copyBtn = byId('builder-copy');
+      const src = 'https://uxnote.ninefortyone.studio/uxnote-tool/uxnote.js';
+
+      const colorInclude = byId('builder-color-include');
+      const colorBlock = byId('builder-color-block');
+      const colorField = byId('builder-color-field');
+      const color = byId('builder-color');
+      const colorText = byId('builder-color-text');
+      const colorAdvancedToggle = byId('builder-color-advanced-toggle');
+      const colorUnifiedRow = byId('builder-color-unified');
+      const advancedFields = byId('builder-color-advanced-fields');
+      const textColor = byId('builder-text-color');
+      const textColorText = byId('builder-text-color-text');
+      const elementColor = byId('builder-element-color');
+      const elementColorText = byId('builder-element-color-text');
+      const backdropEnabled = byId('builder-backdrop-enabled');
+      const backdropValue = byId('builder-backdrop-value');
+      const visibleEnabled = byId('builder-visible-enabled');
+      const visibleValue = byId('builder-visible-value');
+      const topEnabled = byId('builder-top-enabled');
+      const topValue = byId('builder-top-value');
+      const mailto = byId('builder-mailto');
+      const mailtoEnabled = byId('builder-mailto-enabled');
+
+      const normalizeHex = (val) => {
+        if (!val) return '';
+        let v = String(val).trim();
+        if (!v) return '';
+        if (!v.startsWith('#')) v = `#${v}`;
+        if (!/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v)) return '';
+        return v.toLowerCase();
+      };
+
+      const setDisabled = (elements, disabled) => {
+        (elements || []).forEach((el) => {
+          if (!el) return;
+          el.disabled = disabled;
+        });
+      };
+
+      const syncColorInputs = (textEl, colorEl) => {
+        const hex = normalizeHex(textEl.value);
+        if (hex) {
+          textEl.value = hex;
+          colorEl.value = hex;
+        }
+      };
+
+      const updateColorMode = () => {
+        const includeOn = !!(colorInclude && colorInclude.checked);
+        let advancedOn = false;
+        if (colorAdvancedToggle) {
+          if (!includeOn && colorAdvancedToggle.checked) colorAdvancedToggle.checked = false;
+          advancedOn = includeOn && !!colorAdvancedToggle.checked;
+        }
+        if (colorBlock) colorBlock.classList.toggle('is-active', includeOn);
+        if (colorField) {
+          colorField.classList.toggle('mode-off', !includeOn);
+          colorField.classList.toggle('mode-unified', includeOn && !advancedOn);
+          colorField.classList.toggle('mode-advanced', includeOn && advancedOn);
+        }
+        if (colorAdvancedToggle) colorAdvancedToggle.disabled = !includeOn;
+        if (advancedFields) {
+          advancedFields.hidden = !advancedOn;
+          advancedFields.style.display = advancedOn ? 'flex' : 'none';
+        }
+        if (colorUnifiedRow) {
+          colorUnifiedRow.hidden = advancedOn;
+          colorUnifiedRow.style.display = advancedOn ? 'none' : 'flex';
+        }
+        setDisabled([color, colorText], !includeOn || advancedOn);
+        setDisabled([textColor, textColorText, elementColor, elementColorText], !advancedOn);
+      };
+
+      const buildTag = () => {
+        const closeTag = '</scr' + 'ipt>';
+        const attrs = [`src="${src}"`];
+        const addAttr = (enabled, name, value) => {
+          if (!enabled) return;
+          if (!value) return;
+          attrs.push(`${name}="${value}"`);
+        };
+
+        updateColorMode();
+        const includeOn = !!(colorInclude && colorInclude.checked);
+        const advancedOn = includeOn && !!(colorAdvancedToggle && colorAdvancedToggle.checked);
+        if (includeOn) {
+          if (advancedOn) {
+            addAttr(true, 'colorForTextHighlight', normalizeHex(textColorText.value));
+            addAttr(true, 'colorForElementHighlight', normalizeHex(elementColorText.value));
+          } else {
+            addAttr(true, 'colorForHighlight', normalizeHex(colorText.value));
+          }
+        }
+        setDisabled([backdropValue], !(backdropEnabled && backdropEnabled.checked));
+        setDisabled([visibleValue], !(visibleEnabled && visibleEnabled.checked));
+        setDisabled([topValue], !(topEnabled && topEnabled.checked));
+        addAttr(
+          backdropEnabled && backdropEnabled.checked,
+          'isBackdropVisible',
+          backdropValue ? backdropValue.value : 'true'
+        );
+        addAttr(
+          visibleEnabled && visibleEnabled.checked,
+          'isToolVisibleAtFirstLaunch',
+          visibleValue ? visibleValue.value : 'true'
+        );
+        addAttr(
+          topEnabled && topEnabled.checked,
+          'isToolOnTopAtLaunch',
+          topValue ? topValue.value : 'true'
+        );
+        addAttr(mailtoEnabled && mailtoEnabled.checked, 'data-mailto', (mailto.value || '').trim());
+
+        if (attrs.length === 1) {
+          return `<script ${attrs[0]}>${closeTag}`;
+        }
+        return `<script\n  ${attrs.join('\n  ')}\n>${closeTag}`;
+      };
+
+      const updateOutput = () => {
+        if (!output) return;
+        output.textContent = buildTag();
+      };
+
+      const inputs = [
+        colorText,
+        colorAdvancedToggle,
+        colorInclude,
+        textColorText,
+        elementColorText,
+        backdropEnabled,
+        backdropValue,
+        visibleEnabled,
+        visibleValue,
+        topEnabled,
+        topValue,
+        mailto,
+        mailtoEnabled
+      ].filter(Boolean);
+
+      inputs.forEach((el) => {
+        el.addEventListener('input', updateOutput);
+        el.addEventListener('change', updateOutput);
+      });
+
+      if (colorInclude) {
+        colorInclude.addEventListener('change', () => {
+          updateColorMode();
+          updateOutput();
+        });
+      }
+      if (colorAdvancedToggle) {
+        colorAdvancedToggle.addEventListener('change', () => {
+          updateColorMode();
+          updateOutput();
+        });
+      }
+
+      if (color && colorText) {
+        color.addEventListener('input', () => {
+          colorText.value = color.value;
+          updateOutput();
+        });
+        colorText.addEventListener('blur', () => {
+          syncColorInputs(colorText, color);
+          updateOutput();
+        });
+      }
+      if (textColor && textColorText) {
+        textColor.addEventListener('input', () => {
+          textColorText.value = textColor.value;
+          updateOutput();
+        });
+        textColorText.addEventListener('blur', () => {
+          syncColorInputs(textColorText, textColor);
+          updateOutput();
+        });
+      }
+      if (elementColor && elementColorText) {
+        elementColor.addEventListener('input', () => {
+          elementColorText.value = elementColor.value;
+          updateOutput();
+        });
+        elementColorText.addEventListener('blur', () => {
+          syncColorInputs(elementColorText, elementColor);
+          updateOutput();
+        });
+      }
+
+      const attachCopy = (btn, target, statusEl) => {
+        if (!btn || !target) return;
+        btn.addEventListener('click', async () => {
+          try {
+            await navigator.clipboard.writeText(target.textContent || '');
+            if (statusEl) statusEl.textContent = t('builder_copied');
+          } catch (err) {
+            if (statusEl) statusEl.textContent = t('builder_copy_fail');
+          }
+          if (statusEl) {
+            setTimeout(() => {
+              statusEl.textContent = '';
+            }, 2000);
+          }
+        });
+      };
+
+      attachCopy(copyBtn, output, status);
+
+      const highlightCard = (input, card) => {
+        if (!input || !card) return;
+        card.classList.toggle('is-active', !!input.checked);
+        input.addEventListener('change', () => {
+          card.classList.toggle('is-active', !!input.checked);
+        });
+      };
+
+      highlightCard(colorInclude, colorBlock);
+      highlightCard(byId('builder-backdrop-enabled'), byId('builder-card-backdrop'));
+      highlightCard(byId('builder-visible-enabled'), byId('builder-card-visible'));
+      highlightCard(byId('builder-top-enabled'), byId('builder-card-top'));
+      highlightCard(byId('builder-mailto-enabled'), byId('builder-card-mailto'));
+
+      if (i18n && typeof i18n.onChange === 'function') {
+        i18n.onChange(() => {
+          if (status && status.textContent) status.textContent = '';
+        });
+      }
+
+      updateColorMode();
+      updateOutput();
+    };
+
+    document.addEventListener('uxnote:visibility', (evt) => {
+      if (!evt || !evt.detail) return;
+      previewActive = !evt.detail.hidden;
+      updateButtons();
+      setStatus(previewActive ? 'demo_status_active' : 'demo_status_off');
+      updateDemoPointerPosition();
+    });
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', syncFromUxnote);
+      document.addEventListener('DOMContentLoaded', initBuilder);
+      document.addEventListener('DOMContentLoaded', initDemoPointer);
+    } else {
+      syncFromUxnote();
+      initBuilder();
+      initDemoPointer();
+    }
     demoButtons.forEach((btn) => btn.addEventListener('click', loadDemo));
+    initInstallToggle();
+    document.querySelectorAll('.builder-help').forEach((el) => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        el.classList.toggle('tip-open');
+      });
+      el.addEventListener('mouseleave', () => el.classList.remove('tip-open'));
+      el.addEventListener('blur', () => el.classList.remove('tip-open'));
+    });
+    const defaultCopyBtn = byId('default-copy');
+    const defaultCode = byId('default-code');
+    const defaultStatus = byId('default-status');
+    if (defaultCopyBtn && defaultCode) {
+      defaultCopyBtn.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(defaultCode.textContent || '');
+          if (defaultStatus) defaultStatus.textContent = t('builder_copied');
+        } catch (err) {
+          if (defaultStatus) defaultStatus.textContent = t('builder_copy_fail');
+        }
+        if (defaultStatus) {
+          setTimeout(() => {
+            defaultStatus.textContent = '';
+          }, 2000);
+        }
+      });
+    }
+    if (demoPointer) {
+      demoPointer.addEventListener('click', dismissDemoPointer);
+      window.addEventListener('resize', updateDemoPointerPosition);
+      window.addEventListener('scroll', updateDemoPointerPosition, { passive: true });
+    }
   </script>
 </body>
 </html>
