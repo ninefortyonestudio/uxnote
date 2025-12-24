@@ -3449,6 +3449,55 @@
     return document.body && document.body.contains(node);
   }
 
+  function intersectRect(a, b) {
+    if (!a || !b) return null;
+    const left = Math.max(a.x, b.x);
+    const top = Math.max(a.y, b.y);
+    const right = Math.min(a.x + a.width, b.x + b.width);
+    const bottom = Math.min(a.y + a.height, b.y + b.height);
+    const width = right - left;
+    const height = bottom - top;
+    if (width <= 0 || height <= 0) return null;
+    return { x: left, y: top, width, height };
+  }
+
+  function getVisibleRect(el) {
+    if (!el || !isNodeConnected(el) || !el.getBoundingClientRect) return null;
+    let rect = el.getBoundingClientRect();
+    if (!rect.width || !rect.height) return null;
+    let node = el;
+    while (node && node.nodeType === 1) {
+      if (node.tagName === 'DETAILS' && !node.open) {
+        const summary = node.querySelector('summary');
+        if (summary && !summary.contains(el)) return null;
+      }
+      if (node.hasAttribute && node.hasAttribute('hidden')) return null;
+      const ariaHidden = node.getAttribute && node.getAttribute('aria-hidden');
+      if (ariaHidden === 'true') return null;
+      const style = window.getComputedStyle(node);
+      if (
+        style.display === 'none' ||
+        style.visibility === 'hidden' ||
+        style.visibility === 'collapse' ||
+        style.opacity === '0'
+      ) {
+        return null;
+      }
+      const overflowX = style.overflowX || style.overflow;
+      const overflowY = style.overflowY || style.overflow;
+      const clipX = overflowX && overflowX !== 'visible';
+      const clipY = overflowY && overflowY !== 'visible';
+      if (clipX || clipY) {
+        const clipRect = node.getBoundingClientRect();
+        const next = intersectRect(rect, clipRect);
+        if (!next) return null;
+        rect = next;
+      }
+      node = node.parentElement;
+    }
+    return rect;
+  }
+
   function getStackingContextAncestor(el) {
     let node = el && el.nodeType === 1 ? el : null;
     while (node && node.nodeType === 1 && node !== document.body) {
@@ -3902,8 +3951,8 @@
       const spans = targetNode ? [targetNode] : getHighlightSpans(annotation.id);
       const span = spans[0] || document.querySelector(`.uxnote-textmark[data-uxnote-id="${annotation.id}"]`);
       if (!span) return null;
-      const r = span.getBoundingClientRect();
-      if (!r.width || !r.height) return null;
+      const r = getVisibleRect(span);
+      if (!r) return null;
       return { x: r.x, y: r.y, w: r.width, h: r.height, anchor: span };
     }
     if (annotation.type === 'element') {
@@ -3912,8 +3961,8 @@
         state.elementTargets[annotation.id] ||
         (annotation.target?.xpath ? findNodeByXPath(annotation.target.xpath) : null);
       if (!el) return null;
-      const r = el.getBoundingClientRect();
-      if (!r.width || !r.height) return null;
+      const r = getVisibleRect(el);
+      if (!r) return null;
       return { x: r.x, y: r.y, w: r.width, h: r.height, anchor: el };
     }
     return null;
