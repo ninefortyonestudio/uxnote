@@ -3443,6 +3443,12 @@
     return span;
   }
 
+  function isNodeConnected(node) {
+    if (!node) return false;
+    if (typeof node.isConnected === 'boolean') return node.isConnected;
+    return document.body && document.body.contains(node);
+  }
+
   function getStackingContextAncestor(el) {
     let node = el && el.nodeType === 1 ? el : null;
     while (node && node.nodeType === 1 && node !== document.body) {
@@ -3796,10 +3802,44 @@
     }
   }
 
+  function reconcileTextAnnotations() {
+    let changed = false;
+    state.annotations.forEach((ann) => {
+      if (ann.type !== 'text') return;
+      if (ann.pageKey !== normalizePageKey(window.location.href)) return;
+      const spans = getHighlightSpans(ann.id).filter(isNodeConnected);
+      if (spans.length) {
+        state.highlightSpans[ann.id] = spans;
+        if (ann.status === 'missing') {
+          ann.status = 'active';
+          changed = true;
+        }
+        return;
+      }
+      const resolved = resolveTarget(ann);
+      if (resolved && resolved.range) {
+        applyTextHighlight(resolved.range, ann.id);
+        ann.status = 'active';
+        changed = true;
+        return;
+      }
+      if (ann.status !== 'missing') {
+        ann.status = 'missing';
+        changed = true;
+      }
+    });
+    if (changed) {
+      saveAnnotations();
+      renderList();
+      refreshMarkers();
+    }
+  }
+
   function scheduleLayoutRefresh() {
     if (state.layoutTimer) clearTimeout(state.layoutTimer);
     state.layoutTimer = setTimeout(() => {
       refreshMarkers();
+      reconcileTextAnnotations();
       if (state.annotations.some((ann) => ann.status === 'missing')) {
         retryResolveMissingAnnotations();
       }
