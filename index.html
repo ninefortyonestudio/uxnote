@@ -303,6 +303,10 @@
         <summary data-i18n="faq_q8">Will a strict CSP block Uxnote?</summary>
         <p data-i18n="faq_a8">CSP (Content Security Policy) is a browser security header that restricts script and style sources. If it is strict, allow the Uxnote script origin and inline styles (or use a nonce/hash) so the toolbar and highlights can render.</p>
       </details>
+      <details class="faq-item">
+        <summary data-i18n="faq_q9">How do we block specific areas from annotations?</summary>
+        <p data-i18n="faq_a9">Add <code>data-uxnote-ignore</code> to any element to disable annotation inside it. You can re-enable a child with <code>data-uxnote-allow</code>.</p>
+      </details>
     </div>
   </section>
 
@@ -313,7 +317,7 @@
 
   <footer class="footer"><a href="https://ninefortyone.studio" target="_blank" rel="noreferrer noopener">© UxNote – by NineFortyOne.Studio</a></footer>
 
-  <script src="./uxnote-tool/uxnote.js" isBackdropVisible="true" isToolVisibleAtFirstLaunch="false" isToolOnTopAtLaunch="false"></script>
+  <script src="./uxnote-tool/uxnote.js" isBackdropVisible="true" isToolVisibleAtFirstLaunch="false" isToolOnTopAtLaunch="false" colorForHighlight="#4e6546"></script>
   <script src="assets/langues.js"></script>
   
   <script>

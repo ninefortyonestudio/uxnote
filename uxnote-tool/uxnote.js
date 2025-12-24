@@ -102,6 +102,7 @@
     importFiles: [],
     markers: {},
     highlightSpans: {},
+    elementTargets: {},
     outlineBox: null,
     toolbar: null,
     panel: null,
@@ -111,8 +112,6 @@
     importModal: null,
     exportModal: null,
     markerLayer: null,
-    elementOutlines: {},
-    highlightRects: {},
     colors: colorPalette,
     customPosition: false,
     dimEnabled,
@@ -123,7 +122,13 @@
       author: 'all',
       query: ''
     },
-    hidden: false
+    hidden: false,
+    missingObserver: null,
+    missingRetryTimer: null,
+    layoutObserver: null,
+    layoutTimer: null,
+    toast: null,
+    toastTimer: null
   };
   const mobileQuery = window.matchMedia ? window.matchMedia('(max-width: 640px)') : null;
 
@@ -160,6 +165,9 @@
     loadAnnotations();
     refreshKnownAnnotatorNames();
     restoreAnnotations();
+    retryResolveMissingAnnotations();
+    startMissingObserver();
+    startLayoutObserver();
     focusPendingAnnotation();
     bindGlobalHandlers();
   }
@@ -403,13 +411,16 @@
       body.wn-annot-hidden .wn-annotator:not(.wn-annot-visibility-btn) {
         display: none !important;
       }
-      body.wn-annot-hidden .wn-annot-highlight {
+      body.wn-annot-hidden .uxnote-textmark {
         background: transparent !important;
         box-shadow: none !important;
         padding: 0 !important;
-        position: static !important;
-        z-index: auto !important;
+        border-radius: 0 !important;
         pointer-events: none !important;
+      }
+      body.wn-annot-hidden .uxnote-annotated {
+        outline: none !important;
+        box-shadow: none !important;
       }
       body.wn-annot-hidden .wn-annot-visibility-btn {
         opacity: 0.26;
@@ -813,6 +824,20 @@
       .wn-annot-priority.medium .dot { background: #e3b23c; }
       .wn-annot-priority.high { border-color: rgba(224,91,91,0.35); background: rgba(224,91,91,0.1); color: #a03232; }
       .wn-annot-priority.high .dot { background: #e05b5b; }
+      .wn-annot-missing {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        font-weight: 700;
+        color: #a03232;
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(224, 91, 91, 0.35);
+        background: rgba(224, 91, 91, 0.12);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
       .wn-annot-title {
         font-size: 13px;
         font-weight: 700;
@@ -847,7 +872,7 @@
         margin-left: auto;
         margin-top: 6px;
       }
-      .wn-annot-highlight {
+      .uxnote-textmark {
         display: inline;
         background: var(--wn-text-highlight-overlay, rgba(78,156,246,0.2));
         border: none;
@@ -856,7 +881,11 @@
         border-radius: 2px;
         cursor: pointer;
         position: relative;
-        z-index: 2147481800;
+      }
+      .uxnote-annotated {
+        outline: 2px solid var(--wn-element-highlight, #4e9cf6);
+        outline-offset: 2px;
+        box-shadow: 0 0 0 3px var(--wn-element-highlight-soft, rgba(78,156,246,0.08));
       }
       .wn-annot-marker-layer {
         position: fixed;
@@ -865,7 +894,6 @@
         width: 100%;
         height: 100%;
         pointer-events: none;
-        z-index: 2147482400;
       }
       .wn-annot-marker {
         position: absolute;
@@ -893,15 +921,26 @@
         pointer-events: none;
         z-index: 2147482800;
       }
-      .wn-annot-element-outline {
-        position: absolute;
-        border: 2px dashed var(--wn-element-highlight, #4e9cf6);
-        background: var(--wn-element-highlight-soft, rgba(78,156,246,0.08));
+      .wn-annot-toast {
+        position: fixed;
+        left: 50%;
+        bottom: 26px;
+        transform: translateX(-50%);
+        background: #f6f2fb;
+        color: #3f3852;
+        padding: 10px 14px;
+        border-radius: 999px;
+        font-size: 12px;
+        border: 1px solid rgba(109, 86, 199, 0.2);
+        box-shadow: 0 12px 28px rgba(73, 64, 157, 0.18);
+        opacity: 0;
         pointer-events: none;
-        z-index: 2147482795;
+        transition: opacity 0.2s ease, transform 0.2s ease;
+        z-index: 2147483200;
       }
-      .wn-annot-highlight-overlay {
-        display: none;
+      .wn-annot-toast.show {
+        opacity: 1;
+        transform: translateX(-50%) translateY(-4px);
       }
       .wn-annot-tip {
         position: fixed;
@@ -2555,6 +2594,27 @@
     state.tip.classList.remove('show');
   }
 
+  function ensureToast() {
+    if (state.toast) return state.toast;
+    const toast = document.createElement('div');
+    toast.className = 'wn-annot-toast wn-annotator';
+    toast.setAttribute('aria-live', 'polite');
+    document.body.appendChild(toast);
+    state.toast = toast;
+    return toast;
+  }
+
+  function showToast(message) {
+    if (!message) return;
+    const toast = ensureToast();
+    toast.textContent = message;
+    toast.classList.add('show');
+    if (state.toastTimer) clearTimeout(state.toastTimer);
+    state.toastTimer = setTimeout(() => {
+      toast.classList.remove('show');
+    }, 2200);
+  }
+
   function loadSavedPosition() {
     try {
       const saved = localStorage.getItem(positionStorageKey);
@@ -3070,15 +3130,24 @@
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return;
     const range = selection.getRangeAt(0);
-    if (!range || isWithinAnnotator(range.commonAncestorContainer)) return;
+    if (!range) return;
+    const isAllowed =
+      isAnnotatableTarget(range.commonAncestorContainer) &&
+      isAnnotatableTarget(range.startContainer) &&
+      isAnnotatableTarget(range.endContainer);
+    if (!isAllowed) {
+      selection.removeAllRanges();
+      showToast('Cette zone est une popup/overlay, annotation bloquée.');
+      return;
+    }
     const snippet = selection.toString().trim();
     if (!snippet) return;
     const res = await awaitComment('Comment for this highlight?');
     if (!res) return;
     const { comment, priority, author } = res;
     const id = generateId();
-    const payload = serializeRange(range);
-    wrapRange(range, id);
+    const payload = serializeRange(range, snippet);
+    const span = applyTextHighlight(range, id);
     selection.removeAllRanges();
     const annotation = {
       id,
@@ -3090,11 +3159,12 @@
       snippet: snippet.slice(0, 180),
       pageUrl: window.location.href,
       pageKey: normalizePageKey(window.location.href),
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      status: 'active'
     };
     state.annotations.push(annotation);
     saveAnnotations();
-    addMarkerForAnnotation(annotation);
+    addMarkerForAnnotation(annotation, span);
     renderList();
     setMode(null, { keepOutline: true });
   }
@@ -3102,7 +3172,7 @@
   function handleElementHover(evt) {
     if (state.mode !== 'element') return;
     const el = evt.target;
-    if (!el || isWithinAnnotator(el)) {
+    if (!el || !isAnnotatableTarget(el)) {
       hideOutline();
       return;
     }
@@ -3114,7 +3184,10 @@
   async function handleElementClick(evt) {
     if (state.mode !== 'element') return;
     const el = evt.target;
-    if (!el || isWithinAnnotator(el)) return;
+    if (!el || !isAnnotatableTarget(el)) {
+      showToast('Cette zone est une popup/overlay, annotation bloquée.');
+      return;
+    }
     evt.preventDefault();
     evt.stopPropagation();
     const res = await awaitComment('Comment for this element?');
@@ -3122,11 +3195,12 @@
     const { comment, priority, author } = res;
     const id = generateId();
     const targetXPath = getXPath(el);
+    const targetCss = buildCssSelector(el);
     const rect = el.getBoundingClientRect();
     const annotation = {
       id,
       type: 'element',
-      target: { xpath: targetXPath, tag: el.tagName.toLowerCase() },
+      target: { xpath: targetXPath, css: targetCss, tag: el.tagName.toLowerCase() },
       comment: comment.trim(),
       author: author || state.annotatorName || '',
       priority: priority || 'medium',
@@ -3134,12 +3208,13 @@
       pageUrl: window.location.href,
       pageKey: normalizePageKey(window.location.href),
       rect: { x: rect.x + window.scrollX, y: rect.y + window.scrollY, w: rect.width, h: rect.height },
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      status: 'active'
     };
     state.annotations.push(annotation);
     saveAnnotations();
-    addMarkerForAnnotation(annotation);
-    ensureElementOutline(annotation);
+    addMarkerForAnnotation(annotation, el);
+    applyElementHighlight(el, id);
     renderList();
     setMode(null, { keepOutline: true });
   }
@@ -3155,7 +3230,9 @@
 
   function getHighlightSpans(id) {
     const entry = state.highlightSpans[id];
-    if (!entry) return [];
+    if (!entry) {
+      return Array.from(document.querySelectorAll(`.uxnote-textmark[data-uxnote-id="${id}"]`));
+    }
     return Array.isArray(entry) ? entry : [entry];
   }
 
@@ -3169,18 +3246,28 @@
       });
     });
     state.highlightSpans = {};
-    Object.values(state.highlightRects || {}).forEach((rect) => {
-      if (rect && rect.parentNode) rect.parentNode.removeChild(rect);
+    Array.from(document.querySelectorAll('.uxnote-textmark[data-uxnote-id], .wn-annot-highlight[data-wn-annot-id]')).forEach((span) => {
+      if (span && span.parentNode) {
+        unwrapHighlightSpan(span);
+      }
     });
-    state.highlightRects = {};
+    Object.values(state.markers || {}).forEach((entry) => {
+      if (entry && entry.el && entry.el.parentNode) {
+        entry.el.parentNode.removeChild(entry.el);
+      }
+    });
     if (state.markerLayer) {
       state.markerLayer.innerHTML = '';
     }
     state.markers = {};
-    Object.values(state.elementOutlines || {}).forEach((outline) => {
-      if (outline && outline.parentNode) outline.parentNode.removeChild(outline);
+    Object.keys(state.elementTargets || {}).forEach((id) => {
+      removeElementHighlight(id);
     });
-    state.elementOutlines = {};
+    state.elementTargets = {};
+    Array.from(document.querySelectorAll('.uxnote-annotated[data-uxnote-ids]')).forEach((el) => {
+      delete el.dataset.uxnoteIds;
+      el.classList.remove('uxnote-annotated');
+    });
   }
 
   function removeRenderedAnnotation(id) {
@@ -3189,19 +3276,14 @@
       markerEntry.el.parentNode.removeChild(markerEntry.el);
     }
     delete state.markers[id];
-    if (state.highlightRects[id] && state.highlightRects[id].parentNode) {
-      state.highlightRects[id].parentNode.removeChild(state.highlightRects[id]);
-    }
-    delete state.highlightRects[id];
-
-    if (state.elementOutlines[id] && state.elementOutlines[id].parentNode) {
-      state.elementOutlines[id].parentNode.removeChild(state.elementOutlines[id]);
-    }
-    delete state.elementOutlines[id];
+    removeElementHighlight(id);
 
     let highlightSpans = getHighlightSpans(id);
     if (!highlightSpans.length) {
-      highlightSpans = Array.from(document.querySelectorAll(`.wn-annot-highlight[data-wn-annot-id="${id}"]`));
+      highlightSpans = Array.from(document.querySelectorAll(`.uxnote-textmark[data-uxnote-id="${id}"]`));
+      if (!highlightSpans.length) {
+        highlightSpans = Array.from(document.querySelectorAll(`.wn-annot-highlight[data-wn-annot-id="${id}"]`));
+      }
     }
     highlightSpans.forEach((span) => {
       if (span) unwrapHighlightSpan(span);
@@ -3239,16 +3321,38 @@
     );
   }
 
-  function serializeRange(range) {
+  function isAnnotatableTarget(node) {
+    if (!node) return false;
+    const el =
+      node.nodeType === Node.ELEMENT_NODE
+        ? node
+        : node.nodeType === Node.DOCUMENT_NODE
+        ? document.body
+        : node.parentElement;
+    if (!el) return false;
+    if (isWithinAnnotator(el)) return false;
+    if (el.closest) {
+      if (el.closest('[data-uxnote-ignore]')) return false;
+      if (el.closest('[data-uxnote-allow]')) return true;
+      const blocked = el.closest(
+        '#uxnote-root, .wn-annotator, dialog, [popover], [role="dialog"], [role="menu"], [role="tooltip"], [aria-modal="true"]'
+      );
+      if (blocked) return false;
+    }
+    return true;
+  }
+
+  function serializeRange(range, quote) {
     return {
       startXPath: getXPath(range.startContainer),
       startOffset: range.startOffset,
       endXPath: getXPath(range.endContainer),
-      endOffset: range.endOffset
+      endOffset: range.endOffset,
+      quote: quote ? String(quote).slice(0, 200) : ''
     };
   }
 
-  function wrapRange(range, id) {
+  function applyTextHighlight(range, id) {
     let spans = [];
     const workingRange = range.cloneRange();
     const textNodes = getTextNodesInRange(workingRange);
@@ -3266,8 +3370,8 @@
     // Fallback: if no spans were created, wrap the whole range in one span
     if (!spans.length) {
       const span = document.createElement('span');
-      span.className = 'wn-annot-highlight';
-      span.dataset.wnAnnotId = id;
+      span.className = 'uxnote-textmark';
+      span.dataset.uxnoteId = id;
       span.addEventListener('click', (evt) => {
         evt.stopPropagation();
         focusAnnotation(id);
@@ -3279,6 +3383,10 @@
     }
     state.highlightSpans[id] = spans;
     return spans[0];
+  }
+
+  function wrapRange(range, id) {
+    return applyTextHighlight(range, id);
   }
 
   function rangeIntersectsNode(range, node) {
@@ -3324,8 +3432,8 @@
     }
     if (!textNode.parentNode) return null;
     const span = document.createElement('span');
-    span.className = 'wn-annot-highlight';
-    span.dataset.wnAnnotId = id;
+    span.className = 'uxnote-textmark';
+    span.dataset.uxnoteId = id;
     span.addEventListener('click', (evt) => {
       evt.stopPropagation();
       focusAnnotation(id);
@@ -3333,6 +3441,136 @@
     textNode.parentNode.insertBefore(span, textNode);
     span.appendChild(textNode);
     return span;
+  }
+
+  function getStackingContextAncestor(el) {
+    let node = el && el.nodeType === 1 ? el : null;
+    while (node && node.nodeType === 1 && node !== document.body) {
+      const style = window.getComputedStyle(node);
+      const z = style.zIndex;
+      const hasPosition = style.position !== 'static';
+      const createsStacking =
+        (hasPosition && z !== 'auto') ||
+        style.opacity !== '1' ||
+        style.transform !== 'none' ||
+        style.filter !== 'none' ||
+        style.perspective !== 'none' ||
+        style.mixBlendMode !== 'normal' ||
+        style.isolation === 'isolate' ||
+        (style.willChange && style.willChange !== 'auto') ||
+        (style.contain && style.contain !== 'none');
+      if (createsStacking) return node;
+      node = node.parentElement;
+    }
+    return document.body;
+  }
+
+  function getMarkerHost(anchor) {
+    if (!anchor || anchor.nodeType !== 1) return state.markerLayer || document.body;
+    const offsetParent = anchor.offsetParent;
+    if (offsetParent && offsetParent.nodeType === 1) return offsetParent;
+    return getStackingContextAncestor(anchor) || state.markerLayer || document.body;
+  }
+
+  function isGlobalMarkerHost(host) {
+    return host === document.body || host === state.markerLayer || host === document.documentElement;
+  }
+
+  function openContainersForTarget(targetEl) {
+    if (!targetEl || targetEl.nodeType !== 1) return false;
+    let opened = false;
+    let node = targetEl;
+    while (node && node.nodeType === 1 && node !== document.body) {
+      if (node.tagName === 'DETAILS' && !node.open) {
+        node.open = true;
+        opened = true;
+      }
+      if (node.tagName === 'DIALOG' && !node.open) {
+        try {
+          if (typeof node.showModal === 'function') {
+            node.showModal();
+          } else if (typeof node.show === 'function') {
+            node.show();
+          }
+          opened = true;
+        } catch (err) {
+          // ignore
+        }
+      }
+      if (node.hasAttribute && node.hasAttribute('popover')) {
+        try {
+          if (typeof node.showPopover === 'function') {
+            node.showPopover();
+            opened = true;
+          }
+        } catch (err) {
+          // ignore
+        }
+      }
+      if (node.hasAttribute && node.hasAttribute('data-uxnote-open')) {
+        const selector = node.getAttribute('data-uxnote-open');
+        if (selector) {
+          const trigger = document.querySelector(selector);
+          if (trigger && typeof trigger.click === 'function') {
+            trigger.click();
+            opened = true;
+          }
+        }
+      }
+      const ariaHidden = node.getAttribute && node.getAttribute('aria-hidden');
+      if ((node.hasAttribute && node.hasAttribute('hidden')) || ariaHidden === 'true') {
+        const id = node.id;
+        if (id) {
+          const control = document.querySelector(`[aria-controls="${escapeCssIdent(id)}"]`);
+          if (control && typeof control.click === 'function') {
+            control.click();
+            opened = true;
+          }
+        }
+      }
+      node = node.parentElement;
+    }
+    return opened;
+  }
+
+  function applyElementHighlight(el, id) {
+    if (!el || el.nodeType !== 1) return false;
+    const current = el.dataset.uxnoteIds ? el.dataset.uxnoteIds.split(',').filter(Boolean) : [];
+    const next = new Set(current);
+    next.add(id);
+    el.dataset.uxnoteIds = Array.from(next).join(',');
+    el.classList.add('uxnote-annotated');
+    state.elementTargets[id] = el;
+    return true;
+  }
+
+  function removeElementHighlight(id) {
+    const el = state.elementTargets[id];
+    if (!el || el.nodeType !== 1) {
+      delete state.elementTargets[id];
+      const candidates = Array.from(document.querySelectorAll('[data-uxnote-ids]'));
+      candidates.forEach((candidate) => {
+        const current = candidate.dataset.uxnoteIds ? candidate.dataset.uxnoteIds.split(',').filter(Boolean) : [];
+        if (!current.includes(id)) return;
+        const next = current.filter((value) => value !== id);
+        if (next.length) {
+          candidate.dataset.uxnoteIds = next.join(',');
+        } else {
+          delete candidate.dataset.uxnoteIds;
+          candidate.classList.remove('uxnote-annotated');
+        }
+      });
+      return;
+    }
+    const current = el.dataset.uxnoteIds ? el.dataset.uxnoteIds.split(',').filter(Boolean) : [];
+    const next = current.filter((value) => value !== id);
+    if (next.length) {
+      el.dataset.uxnoteIds = next.join(',');
+    } else {
+      delete el.dataset.uxnoteIds;
+      el.classList.remove('uxnote-annotated');
+    }
+    delete state.elementTargets[id];
   }
 
   function getXPath(node) {
@@ -3355,6 +3593,38 @@
     return '/' + parts.join('/');
   }
 
+  function escapeCssIdent(value) {
+    if (window.CSS && typeof window.CSS.escape === 'function') {
+      return window.CSS.escape(value);
+    }
+    return String(value).replace(/[^a-zA-Z0-9_-]/g, '\\$&');
+  }
+
+  function buildCssSelector(el) {
+    if (!el || el.nodeType !== 1) return '';
+    if (el.id) return `#${escapeCssIdent(el.id)}`;
+    const parts = [];
+    let node = el;
+    let depth = 0;
+    while (node && node.nodeType === 1 && depth < 4) {
+      let part = node.tagName.toLowerCase();
+      const classes = Array.from(node.classList || []).filter(
+        (name) => name && !name.startsWith('wn-') && !name.startsWith('uxnote-')
+      );
+      if (classes.length) {
+        part += `.${classes.slice(0, 2).map(escapeCssIdent).join('.')}`;
+      }
+      parts.unshift(part);
+      if (node.parentElement && node.parentElement.id) {
+        parts.unshift(`#${escapeCssIdent(node.parentElement.id)}`);
+        break;
+      }
+      node = node.parentElement;
+      depth += 1;
+    }
+    return parts.join(' > ');
+  }
+
   function findNodeByXPath(xpath) {
     try {
       const doc = document;
@@ -3375,17 +3645,31 @@
   }
 
   function renderAnnotation(annotation) {
-    if (annotation.type === 'text') {
-      const range = deserializeRange(annotation.target);
-      if (!range) return;
-      const span = wrapRange(range, annotation.id);
+    const resolved = resolveTarget(annotation);
+    if (!resolved) {
+      annotation.status = 'missing';
+      startMissingObserver();
+      return;
+    }
+    annotation.status = 'active';
+    renderResolvedAnnotation(annotation, resolved);
+  }
+
+  function renderResolvedAnnotation(annotation, resolved) {
+    if (!resolved) return;
+    if (resolved.type === 'text' && resolved.range) {
+      const span = applyTextHighlight(resolved.range, annotation.id);
       addMarkerForAnnotation(annotation, span);
-    } else if (annotation.type === 'element') {
-      addMarkerForAnnotation(annotation);
+      return;
+    }
+    if (resolved.type === 'element' && resolved.el) {
+      applyElementHighlight(resolved.el, annotation.id);
+      addMarkerForAnnotation(annotation, resolved.el);
     }
   }
 
   function deserializeRange(payload) {
+    if (!payload) return null;
     const startNode = findNodeByXPath(payload.startXPath);
     const endNode = findNodeByXPath(payload.endXPath);
     if (!startNode || !endNode) return null;
@@ -3399,10 +3683,153 @@
     }
   }
 
+  function resolveTarget(annotation) {
+    if (!annotation || !annotation.target) return null;
+    if (annotation.type === 'text') {
+      return resolveTextTarget(annotation);
+    }
+    if (annotation.type === 'element') {
+      return resolveElementTarget(annotation);
+    }
+    return null;
+  }
+
+  function resolveTextTarget(annotation) {
+    const payload = annotation.target || {};
+    const range = deserializeRange(payload);
+    if (range) return { type: 'text', range };
+    const quote = payload.quote || annotation.snippet || '';
+    if (!quote) return null;
+    const fallback = findRangeByQuote(quote);
+    if (!fallback) return null;
+    return { type: 'text', range: fallback };
+  }
+
+  function findRangeByQuote(quote) {
+    const text = String(quote || '').trim();
+    if (!text || text.length < 4) return null;
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null);
+    let node;
+    while ((node = walker.nextNode())) {
+      if (!node.nodeValue || !node.nodeValue.trim()) continue;
+      if (!isAnnotatableTarget(node)) continue;
+      const idx = node.nodeValue.indexOf(text);
+      if (idx === -1) continue;
+      const range = document.createRange();
+      range.setStart(node, idx);
+      range.setEnd(node, idx + text.length);
+      return range;
+    }
+    return null;
+  }
+
+  function resolveElementTarget(annotation) {
+    const target = annotation.target || {};
+    if (target.xpath) {
+      const node = findNodeByXPath(target.xpath);
+      if (node && node.nodeType === 1) return { type: 'element', el: node };
+    }
+    if (target.css) {
+      try {
+        const node = document.querySelector(target.css);
+        if (node && node.nodeType === 1) return { type: 'element', el: node };
+      } catch (err) {
+        // ignore invalid selector
+      }
+    }
+    const tag = target.tag;
+    const snippet = (annotation.snippet || '').trim();
+    if (tag && snippet) {
+      const nodes = document.querySelectorAll(tag);
+      for (const node of nodes) {
+        if (!node || node.nodeType !== 1) continue;
+        if ((node.textContent || '').includes(snippet)) {
+          return { type: 'element', el: node };
+        }
+      }
+    }
+    return null;
+  }
+
+  function scheduleMissingRetry() {
+    if (state.missingRetryTimer) {
+      clearTimeout(state.missingRetryTimer);
+    }
+    state.missingRetryTimer = setTimeout(() => {
+      retryResolveMissingAnnotations();
+    }, 300);
+  }
+
+  function startMissingObserver() {
+    if (state.missingObserver || !window.MutationObserver) return;
+    state.missingObserver = new MutationObserver(() => {
+      if (!state.annotations.some((ann) => ann.status === 'missing')) return;
+      scheduleMissingRetry();
+    });
+    state.missingObserver.observe(document.body, { childList: true, subtree: true });
+  }
+
+  function stopMissingObserver() {
+    if (!state.missingObserver) return;
+    state.missingObserver.disconnect();
+    state.missingObserver = null;
+  }
+
+  function retryResolveMissingAnnotations() {
+    let changed = false;
+    state.annotations.forEach((ann) => {
+      if (ann.status !== 'missing') return;
+      if (ann.pageKey !== normalizePageKey(window.location.href)) return;
+      const resolved = resolveTarget(ann);
+      if (!resolved) return;
+      ann.status = 'active';
+      renderResolvedAnnotation(ann, resolved);
+      changed = true;
+    });
+    if (changed) {
+      saveAnnotations();
+      renderList();
+      refreshMarkers();
+    }
+    if (!state.annotations.some((ann) => ann.status === 'missing')) {
+      stopMissingObserver();
+    }
+  }
+
+  function scheduleLayoutRefresh() {
+    if (state.layoutTimer) clearTimeout(state.layoutTimer);
+    state.layoutTimer = setTimeout(() => {
+      refreshMarkers();
+      if (state.annotations.some((ann) => ann.status === 'missing')) {
+        retryResolveMissingAnnotations();
+      }
+    }, 120);
+  }
+
+  function startLayoutObserver() {
+    if (state.layoutObserver || !window.MutationObserver) return;
+    state.layoutObserver = new MutationObserver((mutations) => {
+      const relevant = mutations.some((mutation) => {
+        const target = mutation.target;
+        if (!target) return false;
+        if (target.classList && target.classList.contains('wn-annotator')) return false;
+        if (target.closest && target.closest('.wn-annotator')) return false;
+        return true;
+      });
+      if (!relevant) return;
+      scheduleLayoutRefresh();
+    });
+    state.layoutObserver.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['style', 'class', 'open', 'hidden', 'aria-hidden']
+    });
+  }
+
   function addMarkerForAnnotation(annotation, targetNode) {
     if (annotation.pageKey !== normalizePageKey(window.location.href)) return;
-    const rect = getViewportRect(annotation, targetNode);
-    if (!rect) return;
+    if (!state.markerLayer) return;
     const existingMarker = state.markers[annotation.id];
     if (existingMarker && existingMarker.el && existingMarker.el.parentNode) {
       existingMarker.el.parentNode.removeChild(existingMarker.el);
@@ -3413,38 +3840,55 @@
     marker.dataset.wnAnnotId = annotation.id;
     const palette = getAnnotationColors(annotation);
     applyMarkerPalette(marker, palette);
-    positionMarker(marker, rect, annotation);
     marker.addEventListener('click', () => focusAnnotation(annotation.id));
-    state.markerLayer.appendChild(marker);
-    state.markers[annotation.id] = { el: marker, rect };
-    ensureHighlightOverlay(annotation, rect, palette);
-
-    if (annotation.type === 'element') {
-      ensureElementOutline(annotation);
+    const rect = getViewportRect(annotation, targetNode);
+    const host = getMarkerHost(rect && rect.anchor ? rect.anchor : targetNode);
+    if (marker.parentNode !== host) {
+      host.appendChild(marker);
     }
+    marker.style.zIndex = isGlobalMarkerHost(host) ? '' : '9999';
+    if (!rect) {
+      marker.style.display = 'none';
+      state.markers[annotation.id] = { el: marker, rect: null };
+      return;
+    }
+    marker.style.display = '';
+    positionMarker(marker, rect, annotation);
+    state.markers[annotation.id] = { el: marker, rect };
   }
 
   function getViewportRect(annotation, targetNode) {
     if (annotation.type === 'text') {
       const spans = targetNode ? [targetNode] : getHighlightSpans(annotation.id);
-      const span = spans[0] || document.querySelector(`[data-wn-annot-id="${annotation.id}"]`);
+      const span = spans[0] || document.querySelector(`.uxnote-textmark[data-uxnote-id="${annotation.id}"]`);
       if (!span) return null;
       const r = span.getBoundingClientRect();
-      return { x: r.x, y: r.y, w: r.width, h: r.height };
+      if (!r.width || !r.height) return null;
+      return { x: r.x, y: r.y, w: r.width, h: r.height, anchor: span };
     }
     if (annotation.type === 'element') {
-      const el = annotation.target?.xpath ? findNodeByXPath(annotation.target.xpath) : null;
+      const el =
+        (targetNode && targetNode.nodeType === 1 ? targetNode : null) ||
+        state.elementTargets[annotation.id] ||
+        (annotation.target?.xpath ? findNodeByXPath(annotation.target.xpath) : null);
       if (!el) return null;
       const r = el.getBoundingClientRect();
-      return { x: r.x, y: r.y, w: r.width, h: r.height };
+      if (!r.width || !r.height) return null;
+      return { x: r.x, y: r.y, w: r.width, h: r.height, anchor: el };
     }
     return null;
   }
 
   function positionMarker(marker, rect, annotation) {
     const offset = getMarkerOffset(annotation);
-    marker.style.left = `${rect.x + rect.w - 6 + offset.x}px`;
-    marker.style.top = `${rect.y + 6 + offset.y}px`;
+    const offsetParent = marker.offsetParent || document.body;
+    const parentRect = offsetParent.getBoundingClientRect();
+    const parentDocX = parentRect.x + window.scrollX;
+    const parentDocY = parentRect.y + window.scrollY;
+    const targetDocX = rect.x + window.scrollX;
+    const targetDocY = rect.y + window.scrollY;
+    marker.style.left = `${targetDocX - parentDocX + rect.w + offset.x + 4}px`;
+    marker.style.top = `${targetDocY - parentDocY + offset.y - 4}px`;
   }
 
   function getMarkerOffset(annotation) {
@@ -3465,65 +3909,31 @@
     return { x: -index * gap, y: 0 };
   }
 
-  function ensureHighlightOverlay(annotation, rect, palette) {
-    if (!state.markerLayer || annotation.type !== 'text' || !rect) return;
-    const colors = palette || getAnnotationColors(annotation);
-    let overlay = state.highlightRects[annotation.id];
-    if (!overlay) {
-      overlay = document.createElement('div');
-      overlay.className = 'wn-annot-highlight-overlay wn-annotator';
-      overlay.dataset.wnAnnotId = annotation.id;
-      state.markerLayer.appendChild(overlay);
-      state.highlightRects[annotation.id] = overlay;
-    }
-    overlay.style.left = `${rect.x}px`;
-    overlay.style.top = `${rect.y}px`;
-    overlay.style.width = `${rect.w}px`;
-    overlay.style.height = `${rect.h}px`;
-    overlay.style.background = colors.overlay;
-    overlay.style.boxShadow = `0 0 0 1px ${colors.base}`;
-  }
-
-  function ensureElementOutline(annotation) {
-    try {
-      const el = annotation.target?.xpath ? findNodeByXPath(annotation.target.xpath) : null;
-      if (!el) return;
-      const rect = el.getBoundingClientRect();
-      let outline = state.elementOutlines[annotation.id];
-      if (outline && outline.parentNode) {
-        // reuse existing
-      } else {
-        outline = document.createElement('div');
-        outline.className = 'wn-annot-element-outline wn-annotator';
-        outline.dataset.wnAnnotId = annotation.id;
-        document.body.appendChild(outline);
-        state.elementOutlines[annotation.id] = outline;
-      }
-      outline.style.left = `${rect.x + window.scrollX}px`;
-      outline.style.top = `${rect.y + window.scrollY}px`;
-      outline.style.width = `${rect.width}px`;
-      outline.style.height = `${rect.height}px`;
-    } catch (err) {
-      // ignore
-    }
-  }
 
   function refreshMarkers() {
     Object.entries(state.markers).forEach(([id, entry]) => {
       const ann = state.annotations.find((a) => a.id === id);
       if (!ann) return;
+      if (ann.status === 'missing') {
+        entry.el.style.display = 'none';
+        entry.rect = null;
+        return;
+      }
       const rect = getViewportRect(ann);
-      if (!rect) return;
+      if (!rect) {
+        entry.el.style.display = 'none';
+        entry.rect = null;
+        return;
+      }
+      entry.el.style.display = '';
       entry.rect = rect;
+      const host = getMarkerHost(rect.anchor);
+      if (entry.el.parentNode !== host) {
+        host.appendChild(entry.el);
+      }
+      entry.el.style.zIndex = isGlobalMarkerHost(host) ? '' : '9999';
       positionMarker(entry.el, rect, ann);
       applyMarkerPalette(entry.el, getAnnotationColors(ann));
-
-      if (ann.type === 'element') {
-        ensureElementOutline(ann);
-      }
-      if (ann.type === 'text') {
-        ensureHighlightOverlay(ann, rect, getAnnotationColors(ann));
-      }
     });
   }
 
@@ -3554,6 +3964,31 @@
     const ann = state.annotations.find((a) => a.id === id);
     if (!ann) return;
     focusListItem(id);
+    if (ann.status === 'missing') {
+      const resolved = resolveTarget(ann);
+      if (resolved) {
+        ann.status = 'active';
+        renderResolvedAnnotation(ann, resolved);
+        renderList();
+      } else {
+        showToast('Annotation introuvable sur cette page.');
+        return;
+      }
+    }
+    const resolved = resolveTarget(ann);
+    if (resolved) {
+      const targetEl =
+        resolved.type === 'element'
+          ? resolved.el
+          : resolved.range && resolved.range.commonAncestorContainer
+          ? resolved.range.commonAncestorContainer.parentElement
+          : null;
+      if (targetEl && openContainersForTarget(targetEl)) {
+        setTimeout(() => {
+          refreshMarkers();
+        }, 160);
+      }
+    }
     const samePage = (targetPageKey || ann.pageKey) === normalizePageKey(window.location.href);
     if (!samePage && allowNavigate) {
       try {
@@ -3567,14 +4002,14 @@
     if (ann.type === 'text') {
       const spans =
         getHighlightSpans(id) ||
-        Array.from(document.querySelectorAll(`[data-wn-annot-id="${id}"]`));
+        Array.from(document.querySelectorAll(`.uxnote-textmark[data-uxnote-id="${id}"]`));
       const span = spans[0];
       if (span) {
         span.scrollIntoView({ behavior: 'smooth', block: 'center' });
         flash(span, getAnnotationColors(ann).base);
       }
     } else if (ann.type === 'element') {
-      const el = ann.target?.xpath ? findNodeByXPath(ann.target.xpath) : null;
+      const el = resolved && resolved.el ? resolved.el : ann.target?.xpath ? findNodeByXPath(ann.target.xpath) : null;
       if (el && el.scrollIntoView) {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         flash(el, getAnnotationColors(ann).base);
@@ -3661,6 +4096,12 @@
       prioChip.innerHTML = `<span class="dot"></span><span>${priorityLabel}</span>`;
       topLeft.appendChild(number);
       topLeft.appendChild(prioChip);
+      if (ann.status === 'missing') {
+        const missing = document.createElement('div');
+        missing.className = 'wn-annot-missing';
+        missing.textContent = 'Missing';
+        topLeft.appendChild(missing);
+      }
       const metaWrap = document.createElement('div');
       metaWrap.className = 'wn-annot-meta-bottom';
       const topRight = document.createElement('div');

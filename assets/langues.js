@@ -80,7 +80,9 @@
       faq_q7: 'Can we use it on single-page apps?',
       faq_a7: 'Yes. Annotations are stored per URL. In an SPA, route changes do not always trigger a full reload, so you may need to reload or re-initialize to render annotations for the new URL.',
       faq_q8: 'Will a strict CSP block Uxnote?',
-      faq_a8: 'CSP (Content Security Policy) is a browser security header that restricts script and style sources. If it is strict, allow the Uxnote script origin and inline styles (or use a nonce/hash) so the toolbar and highlights can render.'
+      faq_a8: 'CSP (Content Security Policy) is a browser security header that restricts script and style sources. If it is strict, allow the Uxnote script origin and inline styles (or use a nonce/hash) so the toolbar and highlights can render.',
+      faq_q9: 'How do we block specific areas from annotations?',
+      faq_a9: 'Add <code>data-uxnote-ignore</code> to any element to disable annotation inside it. You can re-enable a child with <code>data-uxnote-allow</code>.'
     },
     fr: {
       title: 'Uxnote – Annoter et suivre vos pages',
@@ -162,7 +164,9 @@
       faq_q7: 'Est-ce compatible avec les single-page apps ?',
       faq_a7: 'Oui. Les annotations sont stockées par URL. Dans une SPA, les changements de route ne déclenchent pas toujours un rechargement complet : il peut donc être nécessaire de recharger ou de réinitialiser pour afficher les annotations de la nouvelle URL.',
       faq_q8: 'Une CSP stricte peut-elle bloquer Uxnote ?',
-      faq_a8: 'La CSP (Content Security Policy) est un en-tête de sécurité qui limite les sources autorisées pour scripts et styles. Si elle est stricte, autorisez l\'origine du script Uxnote et les styles inline (ou utilisez un nonce/hash) pour afficher la barre et les surlignages.'
+      faq_a8: 'La CSP (Content Security Policy) est un en-tête de sécurité qui limite les sources autorisées pour scripts et styles. Si elle est stricte, autorisez l\'origine du script Uxnote et les styles inline (ou utilisez un nonce/hash) pour afficher la barre et les surlignages.',
+      faq_q9: 'Comment bloquer certaines zones aux annotations ?',
+      faq_a9: 'Ajoutez <code>data-uxnote-ignore</code> sur un élément pour désactiver l\'annotation à l\'intérieur. Vous pouvez réactiver un enfant avec <code>data-uxnote-allow</code>.'
     }
   };
 

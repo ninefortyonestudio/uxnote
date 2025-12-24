@@ -1,107 +1,211 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Uxnote Test – Page 1</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <header>
-    <strong>Uxnote Test Site</strong>
-    <nav>
-      <a href="index.html">Page 1</a>
-      <a href="page2.html">Page 2</a>
-    </nav>
-    <button class="btn secondary" id="open-modal">Ouvrir une popup</button>
-  </header>
-
-  <div class="hero">
-    <h1>Page 1 — Long scroll & superpositions</h1>
-    <p>Testez les annotations sur du texte, des blocs superposés, des accordéons et une popup modale.</p>
-  </div>
-
-  <div class="layout">
-    <aside class="sidebar">
-      <h3>Sidebar sticky</h3>
-      <p>Ce bloc reste visible pendant le scroll.</p>
-      <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam vitae dui quis massa pretium dictum.</p>
-      <div class="accordion">
-        <summary>Accordéon sidebar</summary>
-        <div class="panel">Testez une annotation ici puis refermez l'accordéon.</div>
-      </div>
-    </aside>
-    <main class="content">
-      <div class="block">
-        <h3>Accordéons</h3>
-        <details class="accordion">
-          <summary>Accordéon 1</summary>
-          <div class="panel">Contenu détaillé pour test d'annotation.</div>
-        </details>
-        <details class="accordion">
-          <summary>Accordéon 2</summary>
-          <div class="panel">Autre contenu avec du texte long pour tests.</div>
-        </details>
-      </div>
-
-      <div class="block">
-        <h3>Section texte très longue</h3>
-        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque nec ex justo. Praesent rhoncus elit ac placerat mattis. Etiam justo neque, condimentum at aliquet in, efficitur et turpis. Integer nec odio vel enim semper maximus. Sed pharetra venenatis ante, eu congue eros pulvinar vel. Integer posuere viverra lorem, ut dictum justo ultricies sit amet.</p>
-        <p>Nam laoreet luctus ipsum, at aliquet lacus fermentum a. Nullam ut nunc odio. Cras at ultrices lorem. Sed pretium lectus purus, non ullamcorper urna consequat id. Nulla in semper nibh. Suspendisse lobortis ultricies lorem sed egestas. Integer in ex dui. Suspendisse id iaculis diam. Fusce ut elementum arcu.</p>
-        <p>Vivamus aliquet augue a libero condimentum, vel placerat arcu convallis. Mauris sit amet facilisis enim. Aliquam ut sapien vel arcu luctus pharetra. Proin dapibus, ipsum non ullamcorper luctus, massa felis tincidunt risus, a volutpat nunc justo sed augue. Integer suscipit fermentum ligula, sit amet dictum enim bibendum id.</p>
-      </div>
-
-      <div class="block layered">
-        <h3>Bloc multi-couches (z-index variés)</h3>
-        <div class="layer one">Layer 1 (z-index 1)</div>
-        <div class="layer two">Layer 2 (z-index 2)</div>
-        <div class="layer three">Layer 3 (z-index 3)</div>
-        <p class="mt">Ajoutez des annotations sur chaque layer.</p>
-      </div>
-
-      <div class="block">
-        <h3>Stack de z-index en scroll</h3>
-        <div class="z-stack">
-          <div class="chip a">Z1</div>
-          <div class="chip b">Z2</div>
-          <div class="chip c">Z3</div>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Uxnote Demo - Page One</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header>
+      <div class="nav">
+        <div class="brand">Uxnote Demo</div>
+        <div class="nav-links">
+          <a href="./index.html">Page one</a>
+          <a href="./page-2.html">Page two</a>
         </div>
-        <p class="mt">Testez le comportement des annotations lorsque des couches se superposent.</p>
+        <div class="dropdown">
+          <button type="button" id="menuToggle" aria-haspopup="true" aria-expanded="false">
+            Menu
+          </button>
+          <div class="dropdown-panel" role="menu" aria-hidden="true" id="menuPanel">
+            <a href="#layers" role="menuitem">Layer stack</a>
+            <a href="#accordion" role="menuitem">Accordion</a>
+            <a href="#popups" role="menuitem">Popups</a>
+          </div>
+        </div>
       </div>
+    </header>
 
-      <div class="block">
-        <h3>Texte supplémentaire</h3>
-        <p>Curabitur semper convallis massa, at gravida mauris cursus vel. Aliquam id nibh sed nulla consequat placerat. Integer bibendum vel lectus in hendrerit. Vivamus vel eros feugiat, fermentum arcu vitae, lacinia lacus. Sed facilisis arcu a mauris tempus lobortis.</p>
-        <p>Maecenas id massa sapien. Donec mollis, massa nec facilisis convallis, neque massa varius justo, vitae dictum sem quam id nunc. Sed non nisi at ex auctor rhoncus sed et sapien. Vivamus tincidunt bibendum mi, sit amet cursus felis vulputate eget.</p>
-        <p>Suspendisse potenti. Sed tristique varius ipsum, eget bibendum mi fermentum sit amet. Duis blandit neque sit amet augue malesuada, ut tempus nisl luctus.</p>
-      </div>
+    <main>
+      <section class="hero">
+        <div class="hero-card">
+          <div class="pill">Demo setup</div>
+          <h1>Annotation stress test</h1>
+          <p>
+            Use this page to test text highlights, element highlights, sticky layers,
+            dropdowns, accordions, popovers, and modals.
+          </p>
+          <div class="stack">
+            <button class="cta" type="button" id="openModal">Open modal</button>
+            <button class="cta" type="button" id="openDialog">Open dialog</button>
+            <button class="cta" type="button" id="openPopover">Open popover</button>
+          </div>
+        </div>
+        <div class="hero-card">
+          <div class="pill">Ignore zone</div>
+          <p>
+            This block is marked with <code>data-uxnote-ignore</code> to test the
+            non-annotable rule.
+          </p>
+          <div class="card" data-uxnote-ignore>
+            <strong>Ignore this area</strong>
+            <p>
+              Clicking or selecting inside should be blocked by the tool.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="layers">
+        <h2>Layered content</h2>
+        <div class="layer-wrap">
+          <div class="layer back">
+            <p>This is the back layer. Add annotations here.</p>
+          </div>
+          <div class="layer mid">
+            <p>This is the mid layer with z-index 5.</p>
+          </div>
+          <div class="layer front">
+            <p>Front layer with higher z-index. Try annotating overlaps.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Cards and sticky note</h2>
+        <div class="grid">
+          <div class="card">
+            <h3>Card A</h3>
+            <p>Annotate text and see if it stays behind other UI.</p>
+          </div>
+          <div class="card">
+            <h3>Card B</h3>
+            <p>Use element mode on this card.</p>
+          </div>
+          <div class="sticky-note">
+            <h3>Sticky note</h3>
+            <p>This note stays sticky while you scroll.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="accordion">
+        <h2>Accordion test</h2>
+        <div class="accordion" id="accordionRoot">
+          <div class="accordion-item">
+            <button class="accordion-toggle" type="button" aria-expanded="false">
+              Section one
+            </button>
+            <div class="accordion-panel" hidden>
+              <p>
+                Annotate this text, then close the accordion to ensure the highlight
+                disappears naturally.
+              </p>
+            </div>
+          </div>
+          <div class="accordion-item">
+            <button class="accordion-toggle" type="button" aria-expanded="false">
+              Section two
+            </button>
+            <div class="accordion-panel" hidden>
+              <p>
+                Another block of text for highlight testing in a hidden panel.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="popups">
+        <h2>Popups and tooltips</h2>
+        <div class="grid">
+          <div class="card">
+            <h3>Tooltip</h3>
+            <div class="tooltip-wrap">
+              <span>Hover me</span>
+              <div class="tooltip" role="tooltip">Tooltip content (blocked)</div>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Popover</h3>
+            <p>
+              Popover uses the native <code>popover</code> attribute. Try annotating
+              inside and outside.
+            </p>
+            <button class="cta" type="button" id="openPopoverInline">Toggle popover</button>
+          </div>
+          <div class="card">
+            <h3>Dynamic content</h3>
+            <p>
+              Use this to create content after load and test missing annotation retry.
+            </p>
+            <button class="cta" type="button" id="addDynamic">Add dynamic block</button>
+            <div id="dynamicSlot"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section long-text">
+        <h2>Long text for scrolling</h2>
+        <p>
+          This is a long paragraph for scrolling. Repeat it to test text highlights
+          across multiple lines and scroll positions.
+        </p>
+        <p>
+          This is a long paragraph for scrolling. Repeat it to test text highlights
+          across multiple lines and scroll positions.
+        </p>
+        <p>
+          This is a long paragraph for scrolling. Repeat it to test text highlights
+          across multiple lines and scroll positions.
+        </p>
+        <p>
+          This is a long paragraph for scrolling. Repeat it to test text highlights
+          across multiple lines and scroll positions.
+        </p>
+        <p>
+          This is a long paragraph for scrolling. Repeat it to test text highlights
+          across multiple lines and scroll positions.
+        </p>
+        <p>
+          This is a long paragraph for scrolling. Repeat it to test text highlights
+          across multiple lines and scroll positions.
+        </p>
+      </section>
     </main>
-  </div>
 
-  <div class="sticky-banner">Bannière fixe (z-index 35)</div>
-  <div class="floating-chat">Widget flottant</div>
-
-  <div class="modal-backdrop" id="modal">
-    <div class="modal">
-      <header><h3>Popup modale</h3></header>
-      <p>Testez les annotations à l'intérieur de la popup, puis fermez-la.</p>
-      <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec euismod dictum massa, quis egestas elit.</p>
-      <button class="btn" id="close-modal">Fermer</button>
+    <div class="floating">
+      <strong>Floating banner</strong>
+      <p>This is a fixed banner with high z-index.</p>
     </div>
-  </div>
 
-  <script>
-    const modal = document.getElementById('modal');
-    document.getElementById('open-modal')?.addEventListener('click', () => {
-      if (modal) modal.style.display = 'flex';
-    });
-    document.getElementById('close-modal')?.addEventListener('click', () => {
-      if (modal) modal.style.display = 'none';
-    });
-    modal?.addEventListener('click', (e) => {
-      if (e.target === modal) modal.style.display = 'none';
-    });
-  </script>
-  <script src="../uxnote-tool/uxnote.js" isBackdropVisible="true" isToolVisibleAtFirstLaunch="false"></script>
-</body>
+    <div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true" data-uxnote-allow>
+      <div class="modal">
+        <h3>Custom modal</h3>
+        <p>Annotations inside this modal should be blocked.</p>
+        <button class="cta" type="button" id="closeModal">Close modal</button>
+      </div>
+    </div>
+
+    <dialog id="nativeDialog" data-uxnote-allow>
+      <h3>Native dialog</h3>
+      <p>This is a native dialog element.</p>
+      <button class="cta" type="button" id="closeDialog">Close dialog</button>
+    </dialog>
+
+    <div id="demoPopover" popover role="dialog" aria-modal="true" data-uxnote-allow>
+      <div class="card">
+        <h3>Popover panel</h3>
+        <p>Popover content should be blocked by annotation rule.</p>
+      </div>
+    </div>
+
+    <footer class="footer">
+      <p>Page one footer. Scroll to verify markers and highlights.</p>
+    </footer>
+
+    <script src="./demo.js"></script>
+    <script src="../uxnote-tool/uxnote.js"></script>
+  </body>
 </html>
