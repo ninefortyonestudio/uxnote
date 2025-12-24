@@ -77,12 +77,14 @@
       faq_a5: 'Use script tag options like <code>colorForHighlight</code> (or <code>colorForTextHighlight</code> + <code>colorForElementHighlight</code>), <code>isBackdropVisible</code>, <code>isToolOnTopAtLaunch</code>, and <code>isToolVisibleAtFirstLaunch</code>.',
       faq_q6: 'Is any data sent to a server?',
       faq_a6: 'No. Everything stays in the browser unless you export a JSON file or send annotations by email.',
-      faq_q7: 'Can we use it on single-page apps?',
-      faq_a7: 'Yes. Annotations are stored per URL. In an SPA, route changes do not always trigger a full reload, so you may need to reload or re-initialize to render annotations for the new URL.',
+      faq_q7: 'Can we use it on single-page apps (React, Vue, etc.)?',
+      faq_a7: 'Yes. Annotations are stored per URL. In SPAs, route changes and re-renders do not always trigger a full reload, so you may need to reload or re-initialize to render annotations for the new URL.',
       faq_q8: 'Will a strict CSP block Uxnote?',
       faq_a8: 'CSP (Content Security Policy) is a browser security header that restricts script and style sources. If it is strict, allow the Uxnote script origin and inline styles (or use a nonce/hash) so the toolbar and highlights can render.',
       faq_q9: 'How do we block specific areas from annotations?',
-      faq_a9: 'Add <code>data-uxnote-ignore</code> to any element to disable annotation inside it. You can re-enable a child with <code>data-uxnote-allow</code>.'
+      faq_a9: 'Add <code>data-uxnote-ignore</code> to any element to disable annotation inside it. You can re-enable a child with <code>data-uxnote-allow</code>.',
+      faq_q10: 'Does it work inside iframes?',
+      faq_a10: 'Cross-origin iframes are blocked by the browser. For same-origin iframes, you must inject Uxnote inside the iframe document.'
     },
     fr: {
       title: 'Uxnote – Annoter et suivre vos pages',
@@ -161,12 +163,14 @@
       faq_a5: 'Utilisez les options de la balise script comme <code>colorForHighlight</code> (ou <code>colorForTextHighlight</code> + <code>colorForElementHighlight</code>), <code>isBackdropVisible</code>, <code>isToolOnTopAtLaunch</code> et <code>isToolVisibleAtFirstLaunch</code>.',
       faq_q6: 'Des données sont-elles envoyées à un serveur ?',
       faq_a6: 'Non. Tout reste dans le navigateur, sauf si vous exportez un JSON ou envoyez les annotations par email.',
-      faq_q7: 'Est-ce compatible avec les single-page apps ?',
-      faq_a7: 'Oui. Les annotations sont stockées par URL. Dans une SPA, les changements de route ne déclenchent pas toujours un rechargement complet : il peut donc être nécessaire de recharger ou de réinitialiser pour afficher les annotations de la nouvelle URL.',
+      faq_q7: 'Est-ce compatible avec les single-page apps (React, Vue, etc.) ?',
+      faq_a7: 'Oui. Les annotations sont stockées par URL. Dans une SPA, les changements de route et les re-renders ne déclenchent pas toujours un rechargement complet : il peut donc être nécessaire de recharger ou de réinitialiser pour afficher les annotations de la nouvelle URL.',
       faq_q8: 'Une CSP stricte peut-elle bloquer Uxnote ?',
       faq_a8: 'La CSP (Content Security Policy) est un en-tête de sécurité qui limite les sources autorisées pour scripts et styles. Si elle est stricte, autorisez l\'origine du script Uxnote et les styles inline (ou utilisez un nonce/hash) pour afficher la barre et les surlignages.',
       faq_q9: 'Comment bloquer certaines zones aux annotations ?',
-      faq_a9: 'Ajoutez <code>data-uxnote-ignore</code> sur un élément pour désactiver l\'annotation à l\'intérieur. Vous pouvez réactiver un enfant avec <code>data-uxnote-allow</code>.'
+      faq_a9: 'Ajoutez <code>data-uxnote-ignore</code> sur un élément pour désactiver l\'annotation à l\'intérieur. Vous pouvez réactiver un enfant avec <code>data-uxnote-allow</code>.',
+      faq_q10: 'Est-ce que cela fonctionne dans des iframes ?',
+      faq_a10: 'Les iframes cross-origin sont bloquées par le navigateur. Pour les iframes same-origin, il faut injecter Uxnote dans le document de l\'iframe.'
     }
   };
 

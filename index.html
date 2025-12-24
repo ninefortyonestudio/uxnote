@@ -296,8 +296,8 @@
         <p data-i18n="faq_a6">No. Everything stays in the browser unless you export a JSON file or send annotations by email.</p>
       </details>
       <details class="faq-item">
-        <summary data-i18n="faq_q7">Can we use it on single-page apps?</summary>
-        <p data-i18n="faq_a7">Yes. Annotations are stored per URL. In an SPA, route changes do not always trigger a full reload, so you may need to reload or re-initialize to render annotations for the new URL.</p>
+        <summary data-i18n="faq_q7">Can we use it on single-page apps (React, Vue, etc.)?</summary>
+        <p data-i18n="faq_a7">Yes. Annotations are stored per URL. In SPAs, route changes and re-renders do not always trigger a full reload, so you may need to reload or re-initialize to render annotations for the new URL.</p>
       </details>
       <details class="faq-item">
         <summary data-i18n="faq_q8">Will a strict CSP block Uxnote?</summary>
@@ -306,6 +306,10 @@
       <details class="faq-item">
         <summary data-i18n="faq_q9">How do we block specific areas from annotations?</summary>
         <p data-i18n="faq_a9">Add <code>data-uxnote-ignore</code> to any element to disable annotation inside it. You can re-enable a child with <code>data-uxnote-allow</code>.</p>
+      </details>
+      <details class="faq-item">
+        <summary data-i18n="faq_q10">Does it work inside iframes?</summary>
+        <p data-i18n="faq_a10">Cross-origin iframes are blocked by the browser. For same-origin iframes, you must inject Uxnote inside the iframe document.</p>
       </details>
     </div>
   </section>
