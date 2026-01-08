@@ -2,8 +2,7 @@
  * Uxnote
  * Author: ninefortyonestudio (https://github.com/ninefortyonestudio)
  * Repository: https://github.com/ninefortyonestudio/uxnote
- * License: PolyForm Noncommercial 1.0.0 (noncommercial use only)
- * https://polyformproject.org/licenses/noncommercial/1.0.0/
+ * License: MIT (see LICENSE)
  * Built with Codex 5.2
  */
 (() => {

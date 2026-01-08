@@ -45,7 +45,7 @@ Annotations are stored in `localStorage` for the current origin and per URL. No 
 - Same-origin iframes work if you inject Uxnote inside the iframe document.
 
 ## License
-Uxnote is source-available under the PolyForm Noncommercial 1.0.0 license. You may use, modify, and redistribute it for noncommercial purposes only. Commercial use is not permitted. See `LICENSE`.
+Uxnote is released under the MIT License. See `LICENSE`.
 
 ## Project layout
 - `index.html` - landing page and documentation copy.
