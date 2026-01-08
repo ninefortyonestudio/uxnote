@@ -24,7 +24,7 @@ Uxnote est une barre d'annotation pour maquettes et sites web. Ajoutez un seul s
 Placez le script juste avant `</body>` pour que le DOM soit pret. Si vous devez le mettre dans `<head>`, ajoutez `defer`.
 
 ```html
-<script src="https://uxnote.ninefortyone.studio/uxnote-tool/uxnote.js"></script>
+<script src="https://github.com/ninefortyonestudio/uxnote/releases/download/v1.0.0/uxnote.min-v1.0.0.js"></script>
 ```
 
 ## Options de la balise script

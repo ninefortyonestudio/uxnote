@@ -24,7 +24,7 @@ Uxnote is an annotation bar for mockups and websites. Drop a single script to ge
 Place the script right before `</body>` so the DOM is ready. If you must place it in `<head>`, add `defer`.
 
 ```html
-<script src="https://uxnote.ninefortyone.studio/uxnote-tool/uxnote.js"></script>
+<script src="https://github.com/ninefortyonestudio/uxnote/releases/download/v1.0.0/uxnote.min-v1.0.0.js"></script>
 ```
 
 ## Script tag options
