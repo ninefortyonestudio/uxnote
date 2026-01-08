@@ -1,5 +1,7 @@
 # Uxnote
 
+[English](README.md) | [Français](README.fr.md)
+
 Uxnote is an annotation bar for mockups and websites. Drop a single script to get text highlights, element pins, numbered cards, color theming, a dimmed focus mode, import/export, and email handoff. No plugin and no backend required.
 
 ## Who it is for
