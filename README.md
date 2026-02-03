@@ -53,4 +53,3 @@ Uxnote is released under the MIT License. See `LICENSE`.
 - `index.html` - landing page and documentation copy.
 - `assets/` - landing styles and language data.
 - `uxnote-tool/uxnote.js` - Uxnote tool script.
-- `uxnote-tool/ressources/` - icons and logos.
