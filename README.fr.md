@@ -2,6 +2,15 @@
 
 [English](README.md) | [Français](README.fr.md)
 
+<p align="center">
+  <a href="https://uxnote.ninefortyone.studio">
+    <img alt="Docs et installation personnalisée disponible sur la landing page" src="assets/badges/landing-page-fr.svg" height="40">
+  </a>
+  <a href="https://www.buymeacoffee.com/ninefortyonestudio">
+    <img alt="Buy me a coffee" src="assets/badges/bmc-button%20yallow.svg" height="40">
+  </a>
+</p>
+
 Uxnote est une barre d'annotation pour maquettes et sites web. Ajoutez un seul script pour obtenir des surlignages, des marqueurs d'elements, des cartes numerotees, des couleurs personnalisees, un mode focus assombri, l'import/export et un envoi par email. Sans plugin et sans backend.
 
 ## Pour qui

@@ -2,6 +2,15 @@
 
 [English](README.md) | [Français](README.fr.md)
 
+<p align="center">
+  <a href="https://uxnote.ninefortyone.studio">
+    <img alt="Docs and custom install on the landing page" src="assets/badges/landing-page.svg" height="40">
+  </a>
+  <a href="https://www.buymeacoffee.com/ninefortyonestudio">
+    <img alt="Buy me a coffee" src="assets/badges/bmc-button%20yallow.svg" height="40">
+  </a>
+</p>
+
 Uxnote is an annotation bar for mockups and websites. Drop a single script to get text highlights, element pins, numbered cards, color theming, a dimmed focus mode, import/export, and email handoff. No plugin and no backend required.
 
 ## Who it is for
