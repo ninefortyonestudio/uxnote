@@ -75,8 +75,6 @@
   const importFilesStorageKey = `uxnote:import-files:${siteKey}`;
   const visibilityStorageKey = `uxnote:hidden:${siteKey}`;
   const pendingFocusKey = `uxnote:pending:${siteKey}`;
-  const analyticsSrc = 'https://cloud.umami.is/script.js';
-  const analyticsWebsiteId = '9ba5fe24-9047-43b9-bdc6-c4113d1cf0a5';
   const dimConfigAttr =
     getScriptAttr('isBackdropVisible') ||
     getScriptAttr('isbackdropvisible') ||
@@ -160,7 +158,6 @@
     state.annotatorName = loadAnnotatorName();
     state.annotatorNames = loadAnnotatorNames();
     state.importFiles = loadImportFiles();
-    injectAnalytics();
     captureBasePadding();
     applyColorTheme();
     injectStyles();
@@ -175,20 +172,6 @@
     startLayoutObserver();
     focusPendingAnnotation();
     bindGlobalHandlers();
-  }
-
-  function injectAnalytics() {
-    // Avoid duplicating the Umami tag if the host page already has it for Uxnote
-    const existing = document.querySelector(
-      `script[data-website-id="${analyticsWebsiteId}"][src="${analyticsSrc}"]`
-    );
-    if (existing || !document.head) return;
-    const s = document.createElement('script');
-    s.defer = true;
-    s.src = analyticsSrc;
-    s.setAttribute('data-website-id', analyticsWebsiteId);
-    s.setAttribute('data-uxnote-analytics', 'true');
-    document.head.appendChild(s);
   }
 
   function captureBasePadding() {
